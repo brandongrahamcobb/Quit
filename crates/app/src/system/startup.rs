@@ -177,12 +177,14 @@ pub fn setup_wallpaper_controls(
                     ..default()
                 },
                 BackgroundColor(Color::srgb(0.10, 0.13, 0.15)),
-                Text::new("Wallpaper"),
-                TextFont {
-                    font_size: 16.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
+                children![(
+                    Text::new("Settings"),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                )]
             ));
             parent.spawn((
                 WallpaperModal,
@@ -210,7 +212,7 @@ pub fn setup_wallpaper_controls(
                     BackgroundColor(Color::srgb(0.10, 0.13, 0.15)),
                     children![
                         (
-                            Text::new("Wallpaper settings"),
+                            Text::new("Settings"),
                             TextFont {
                                 font_size: 24.0,
                                 ..default()
@@ -231,12 +233,14 @@ pub fn setup_wallpaper_controls(
                                 ..default()
                             },
                             BackgroundColor(Color::srgb(0.20, 0.23, 0.25)),
-                            Text::new("×"),
-                            TextFont {
-                                font_size: 24.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
+                            children![(
+                                Text::new("x"),
+                                TextFont {
+                                    font_size: 24.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            )]
                         ),
                         (
                             WallpaperChoicesList,
@@ -339,7 +343,7 @@ pub fn setup_wallpaper_controls(
                             },
                             children![
                                 (
-                                    Text::new("Repeat horizontally"),
+                                    Text::new("Tile X"),
                                     TextFont::default(),
                                     TextColor(Color::WHITE),
                                 ),
@@ -380,7 +384,7 @@ pub fn setup_wallpaper_controls(
                             },
                             children![
                                 (
-                                    Text::new("Repeat vertically"),
+                                    Text::new("Tile Y"),
                                     TextFont::default(),
                                     TextColor(Color::WHITE),
                                 ),
@@ -421,7 +425,7 @@ pub fn setup_wallpaper_controls(
                             },
                             children![
                                 (
-                                    Text::new("Tiling threshold"),
+                                    Text::new("Scale"),
                                     TextFont::default(),
                                     TextColor(Color::WHITE),
                                 ),
