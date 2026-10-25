@@ -1,0 +1,6 @@
+/migrations/0000*
+/migrations/.keep
+/target/
+/Cargo.lock
+/.env
+**/.DS_Store

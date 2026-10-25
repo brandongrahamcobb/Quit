@@ -1,0 +1,38 @@
+services:
+
+  db:
+    image: postgres
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:Z
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DATABASE}'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    ports:
+      - "5433:5432"
+
+  quit: &app-release
+    build:
+      context: .
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+    volumes:
+      - quit-backups:/app/backups
+      - cargo-registry:/usr/local/cargo/registry
+
+volumes:
+  quit-backups:
+  data:
+  cargo-registry:
+
+

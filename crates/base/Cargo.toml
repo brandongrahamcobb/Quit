@@ -1,0 +1,10 @@
+[package]
+name = "base"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "2"
+num-traits = "0.2.19"
+num-derive = "0.4.2"
+config = { path = "../config" }

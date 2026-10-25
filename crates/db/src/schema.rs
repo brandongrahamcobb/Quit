@@ -1,0 +1,40 @@
+/* db/src/schema.rs
+ * The purpose of this module is to frame the database schema for diesel.
+ *
+ * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+diesel::table! {
+    accounts (id) {
+        id -> Nullable<Int4>,
+        username -> Text,
+        password -> Text,
+        pic -> Nullable<Text>,
+        last_login_at -> Nullable<Timestamp>,
+        gender -> Text,
+        accepted_tos -> Bool,
+        banned -> Bool,
+        admin -> Bool,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(
+    accounts,
+);
+
+

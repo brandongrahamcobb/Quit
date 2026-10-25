@@ -1,0 +1,12 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "2"
+diesel = { version = "2.3.7", features = ["postgres", "network-address", "r2d2"] }
+tokio = { version = "1.51.1", features = ["full"] }
+config = { path = "../config" }
+r2d2 = "0.8.10"
+base = { path = "../base" }
