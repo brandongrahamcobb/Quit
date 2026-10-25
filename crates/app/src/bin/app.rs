@@ -23,6 +23,7 @@ use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
 use bevy::ecs::system::Commands;
 use db::pool::DbPool;
+use quit::plugin::dashboard_plugin::DashboardPlugin;
 use quit::plugin::login_plugin::LoginPlugin;
 use quit::resource::custom_resource::{ClientMap, Database};
 use tracing_subscriber::EnvFilter;
@@ -35,6 +36,7 @@ fn main() {
     let mut app: App = App::new();
     app.add_plugins(DefaultPlugins);
     app.add_plugins(LoginPlugin);
+    app.add_plugins(DashboardPlugin);
     let db: DbPool = db::pool::new().expect("failed to create database pool");
     app.insert_resource(ClientMap(HashMap::new()));
     app.insert_resource(Database(db));

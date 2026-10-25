@@ -1,5 +1,5 @@
 /* app/src/component/login.rs
- * The purpose of this module is to provide a login page component.
+ * The purpose of this module is to provide login page components.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *
@@ -18,8 +18,6 @@
  */
 
 use bevy::prelude::*;
-
-use crate::resource::custom_resource::WallpaperMode;
 
 #[derive(Component)]
 pub struct UsernameField;
@@ -57,51 +55,3 @@ pub struct LoginStatusDisplay;
 
 #[derive(Component)]
 pub struct LoginScreen;
-
-#[derive(Component)]
-pub struct WallpaperBackground;
-
-#[derive(Component)]
-pub struct WallpaperOpenButton;
-
-#[derive(Component)]
-pub struct WallpaperCloseButton;
-
-#[derive(Component)]
-pub struct WallpaperModal;
-
-#[derive(Component)]
-pub struct WallpaperChoicesList;
-
-#[derive(Component)]
-pub struct WallpaperImageChoice(pub String);
-
-#[derive(Component)]
-pub struct WallpaperModeDropdown;
-
-#[derive(Component)]
-pub struct WallpaperModeMenu;
-
-#[derive(Component)]
-pub struct WallpaperModeChoice(pub WallpaperMode);
-
-#[derive(Component)]
-pub struct WallpaperTileXButton;
-
-#[derive(Component)]
-pub struct WallpaperTileYButton;
-
-#[derive(Component)]
-pub struct WallpaperTileXKnob;
-
-#[derive(Component)]
-pub struct WallpaperTileYKnob;
-
-#[derive(Component)]
-pub struct WallpaperStretchSlider;
-
-#[derive(Component)]
-pub struct WallpaperStretchFill;
-
-#[derive(Component)]
-pub struct WallpaperStretchLabel;

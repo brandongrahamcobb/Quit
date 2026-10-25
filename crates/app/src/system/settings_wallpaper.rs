@@ -1,5 +1,5 @@
-/* app/src/system/wallpaper.rs
- * The purpose of this module is to provide a wallpaper system.
+/* app/src/system/settings_wallpaper.rs
+ * The purpose of this module is to provide a wallpaper settings system.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *
@@ -20,16 +20,26 @@
 
 use bevy::prelude::*;
 use bevy::ui::{FocusPolicy, RelativeCursorPosition};
+use tokio::runtime::Builder;
 use std::path::Path;
+use std::sync::mpsc::TryRecvError;
+use std::thread;
 
-use crate::component::login::{
+use crate::component::settings::{
     WallpaperBackground, WallpaperChoicesList, WallpaperCloseButton, WallpaperImageChoice, WallpaperModal, WallpaperModeChoice, WallpaperModeDropdown, WallpaperModeMenu, WallpaperOpenButton, WallpaperStretchFill, WallpaperStretchLabel, WallpaperStretchSlider, WallpaperTileXButton, WallpaperTileXKnob, WallpaperTileYButton, WallpaperTileYKnob,
 };
-use crate::resource::custom_resource::{
-    WallpaperFiles,
-    WallpaperMode,
-    WallpaperSettings,
+use crate::resource::custom_resource::Database;
+use crate::resource::settings_resource::{
+    WallpaperFiles, WallpaperMode, WallpaperSettings,
 };
+use crate::resource::login_resource::AuthenticatedAccount;
+use crate::resource::settings_resource::WallpaperSettingsLoadResults;
+
+#[derive(Default)]
+struct WallpaperSaveDebounce {
+    dirty: bool,
+    timer: Option<Timer>,
+}
 
 pub fn toggle_wallpaper_modal(
     open_buttons: Query<
@@ -324,7 +334,6 @@ pub fn update_tiled_controls(
     let active_color = Color::srgb(0.22, 0.48, 0.39);
     let inactive_color = Color::srgb(0.28, 0.32, 0.34);
     let disabled_color = Color::srgb(0.18, 0.20, 0.21);
-
     for (mut color, mut focus) in &mut tile_x_buttons {
         *color = BackgroundColor(if enabled && settings.tile_x {
             active_color
@@ -384,4 +393,150 @@ pub fn update_tiled_controls(
     for mut label in &mut labels {
         label.0 = format!("{:.2}", settings.stretch_value);
     }
+}
+
+pub fn load_wallpaper_settings(
+    database: Res<Database>,
+    account: Res<AuthenticatedAccount>,
+    results: Res<WallpaperSettingsLoadResults>,
+) {
+    let account_id = account.id;
+    let pool = database.0.clone();
+    let sender = results.sender.clone();
+    thread::spawn(move || {
+        let result = match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => runtime
+                .block_on(
+                    db::settings::wallpaper::getters::get_wallpaper_model_by_acc_id(
+                        &pool,
+                        account_id,
+                    ),
+                )
+                .map_err(|error| error.to_string()),
+            Err(error) => Err(error.to_string()),
+        };
+        let _ = sender.send(result);
+    });
+}
+
+pub fn apply_loaded_wallpaper_settings(
+    results: Res<WallpaperSettingsLoadResults>,
+    mut settings: ResMut<WallpaperSettings>,
+) {
+    let result = match results.receiver.lock() {
+        Ok(receiver) => receiver.try_recv(),
+        Err(error) => {
+            eprintln!("wallpaper settings result lock failed: {error}");
+            return;
+        }
+    };
+    let model = match result {
+        Ok(Ok(model)) => model,
+        Ok(Err(error)) => {
+            eprintln!("could not load wallpaper settings: {error}");
+            return;
+        }
+        Err(TryRecvError::Empty) => return,
+        Err(TryRecvError::Disconnected) => {
+            eprintln!("wallpaper settings result channel disconnected");
+            return;
+        }
+    };
+    let mode = match model.mode.as_str() {
+        "Auto" => WallpaperMode::Auto,
+        "Stretch" => WallpaperMode::Stretch,
+        "Tiled" => WallpaperMode::Tiled,
+        other => {
+            eprintln!("unknown wallpaper mode in database: {other}");
+            return;
+        }
+    };
+    if let Some(file_name) = model.file_name {
+        settings.image = file_name;
+    }
+    settings.mode = mode;
+    settings.tile_x = model.tile_x;
+    settings.tile_y = model.tile_y;
+    settings.stretch_value = model.scale;
+}
+
+pub fn save_wallpaper_settings(
+    settings: Res<WallpaperSettings>,
+    account: Res<AuthenticatedAccount>,
+    database: Res<Database>,
+    time: Res<Time>,
+    mut debounce: Local<WallpaperSaveDebounce>,
+) {
+    if settings.is_changed() {
+        debounce.dirty = true;
+        debounce.timer = Some(Timer::from_seconds(0.5, TimerMode::Once));
+    }
+    if !debounce.dirty {
+        return;
+    }
+    let Some(timer) = debounce.timer.as_mut() else {
+        return;
+    };
+    if !timer.tick(time.delta()).just_finished() {
+        return;
+    }
+    debounce.dirty = false;
+    let account_id = account.id;
+    let file_name = settings.image.clone();
+    let mode = match settings.mode {
+        WallpaperMode::Auto => "Auto",
+        WallpaperMode::Stretch => "Stretch",
+        WallpaperMode::Tiled => "Tiled",
+    }
+    .to_owned();
+    let tile_x = settings.tile_x;
+    let tile_y = settings.tile_y;
+    let scale = settings.stretch_value;
+    let pool = database.0.clone();
+    std::thread::spawn(move || {
+        let runtime = match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => runtime,
+            Err(error) => {
+                eprintln!("could not start wallpaper save runtime: {error}");
+                return;
+            }
+        };
+        let result = runtime.block_on(async {
+            db::settings::wallpaper::setters::set_wallpaper_file_name_by_acc_id(
+                &pool,
+                account_id,
+                file_name,
+            )
+            .await?;
+            db::settings::wallpaper::setters::set_mode_by_acc_id(
+                &pool,
+                account_id,
+                mode,
+            )
+            .await?;
+            db::settings::wallpaper::setters::set_tile_x_by_acc_id(
+                &pool,
+                account_id,
+                tile_x,
+            )
+            .await?;
+            db::settings::wallpaper::setters::set_tile_y_by_acc_id(
+                &pool,
+                account_id,
+                tile_y,
+            )
+            .await?;
+            db::settings::wallpaper::setters::set_tile_scale_by_acc_id(
+                &pool,
+                account_id,
+                scale,
+            )
+            .await?;
+
+            Ok::<(), db::error::DatabaseError>(())
+        });
+        if let Err(error) = result {
+            eprintln!("could not save wallpaper settings: {error}");
+        }
+    });
 }

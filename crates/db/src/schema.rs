@@ -33,8 +33,22 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    settings_wallpaper (acc_id) {
+        acc_id -> Int4,
+        file_name -> Nullable<Text>,
+        tile_x -> Bool,
+        tile_y -> Bool,
+        scale -> Float4,
+        mode -> Text,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
+    settings_wallpaper,
 );
 
 

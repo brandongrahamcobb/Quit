@@ -17,80 +17,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashMap;
 
 use bevy::ecs::entity::Entity;
 use bevy::ecs::resource::Resource;
 use db::pool::DbPool;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
-use std::sync::Mutex;
+use std::collections::HashMap;
 
 #[derive(Resource)]
 pub struct ClientMap(pub HashMap<i32, Entity>);
 
 #[derive(Clone, Resource)]
 pub struct Database(pub DbPool);
-
-#[derive(Debug)]
-pub enum LoginResult {
-    Authenticated { id: i32, username: String },
-    InvalidCredentials,
-    DatabaseUnavailable,
-}
-
-#[derive(Resource)]
-pub struct LoginResults {
-    pub sender: Sender<LoginResult>,
-    pub receiver: Mutex<Receiver<LoginResult>>,
-}
-
-impl Default for LoginResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
-}
-
-#[derive(Resource, Default)]
-pub struct LoginPending(pub bool);
-
-#[derive(Resource)]
-pub struct AuthenticatedAccount {
-    pub id: i32,
-    pub username: String,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum WallpaperMode {
-    Auto,
-    Stretch,
-    #[default]
-    Tiled,
-}
-
-#[derive(Resource)]
-pub struct WallpaperSettings {
-    pub image: String,
-    pub mode: WallpaperMode,
-    pub tile_x: bool,
-    pub tile_y: bool,
-    pub stretch_value: f32,
-}
-
-impl Default for WallpaperSettings {
-    fn default() -> Self {
-        Self {
-            image: "S-[3-(N-methylpyrrolid-2-yl)]pyridine.png".to_owned(),
-            mode: WallpaperMode::Tiled,
-            tile_x: true,
-            tile_y: true,
-            stretch_value: 0.1,
-        }
-    }
-}
-
-#[derive(Resource, Default)]
-pub struct WallpaperFiles(pub Vec<String>);

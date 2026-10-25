@@ -19,20 +19,27 @@
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
-use std::sync::mpsc::TryRecvError;
 use db::account::getters::get_acc_model_by_username;
+use std::sync::mpsc::TryRecvError;
 use tokio::runtime::Builder;
-use crate::page::AppPage;
-use crate::resource::custom_resource::{
-    AuthenticatedAccount, Database, LoginPending, LoginResult, LoginResults,
-};
 use crate::component::login::{
-    LoginFocus, LoginForm, PasswordDisplay, PasswordField, UsernameDisplay, UsernameField, LoginStatusDisplay, LoginSubmit
+    LoginFocus, LoginForm, LoginScreen, LoginStatusDisplay, LoginSubmit, PasswordDisplay, PasswordField, UsernameDisplay, UsernameField
 };
+use crate::page::AppPage;
+use crate::resource::custom_resource::Database;
+use crate::resource::login_resource::{
+    AuthenticatedAccount, LoginPending, LoginResult, LoginResults,
+};
+
+pub fn despawn_login(mut commands: Commands, screens: Query<Entity, With<LoginScreen>>) {
+    for screen in &screens {
+        commands.entity(screen).despawn();
+    }
+}
 
 pub fn edit_login_fields(
     mut keyboard: MessageReader<KeyboardInput>,
-    mut time: Res<Time>,
+    time: Res<Time>,
     mut form: ResMut<LoginForm>,
     mut displays: Query<(&mut Text, Option<&UsernameDisplay>, Option<&PasswordDisplay>)>,
 ) {
@@ -112,7 +119,7 @@ pub fn select_login_field(
         (&Interaction, Option<&UsernameField>, Option<&PasswordField>),
         (Changed<Interaction>, With<Button>),
     >,
-    mut time: Res<Time>,
+    time: Res<Time>,
     mut form: ResMut<LoginForm>,
 ) {
     for (interaction, username, password) in &mut interactions {
@@ -133,7 +140,6 @@ pub fn select_login_field(
 
 pub fn submit_login(
     interactions: Query<&Interaction, (Changed<Interaction>, With<LoginSubmit>)>,
-    mut time: Res<Time>,
     mut keyboard: MessageReader<KeyboardInput>,
     mut form: ResMut<LoginForm>,
     database: Res<Database>,

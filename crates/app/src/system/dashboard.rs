@@ -20,17 +20,25 @@
 
 use bevy::prelude::*;
 
-use crate::component::login::LoginScreen;
-use crate::resource::custom_resource::AuthenticatedAccount;
+use crate::component::dashboard::DashboardScreen;
+use crate::component::settings::WallpaperBackground;
+use crate::resource::login_resource::AuthenticatedAccount;
+use crate::resource::settings_resource::{WallpaperMode, WallpaperSettings};
 
-pub fn despawn_login(mut commands: Commands, screens: Query<Entity, With<LoginScreen>>) {
-    for screen in &screens {
-        commands.entity(screen).despawn();
-    }
-}
 
-pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount>) {
+pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount>, asset_server: Res<AssetServer>, wallpaper_settings: Res<WallpaperSettings>) {
+    let image_mode = match wallpaper_settings.mode {
+        WallpaperMode::Auto => NodeImageMode::Auto,
+        WallpaperMode::Stretch => NodeImageMode::Stretch,
+        WallpaperMode::Tiled => NodeImageMode::Tiled {
+            tile_x: wallpaper_settings.tile_x,
+            tile_y: wallpaper_settings.tile_y,
+            stretch_value: wallpaper_settings.stretch_value,
+        },
+    };
     commands.spawn((
+        DashboardScreen,
+        WallpaperBackground,
         Node {
             width: percent(100),
             height: percent(100),
@@ -38,7 +46,7 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
             justify_content: JustifyContent::Center,
             ..default()
         },
-        BackgroundColor(Color::srgb(0.055, 0.075, 0.09)),
+        ImageNode::new(asset_server.load(wallpaper_settings.image.clone())).with_mode(image_mode),
         children![(
             Node {
                 padding: UiRect::all(px(36)),
@@ -68,3 +76,5 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
         )],
     ));
 }
+
+
