@@ -23,6 +23,7 @@ use bevy::prelude::*;
 pub enum AppPage {
     #[default]
     Login,
+    Onboarding,
     Dashboard,
-    Onboarding
+    Calendar
 }

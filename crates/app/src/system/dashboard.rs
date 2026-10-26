@@ -20,6 +20,7 @@
 
 use bevy::prelude::*;
 
+use crate::component::calendar::OpenCalendarButton;
 use crate::component::dashboard::DashboardScreen;
 use crate::component::settings::WallpaperBackground;
 use crate::resource::login_resource::AuthenticatedAccount;
@@ -72,6 +73,23 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
                     },
                     TextColor(Color::srgb(0.68, 0.74, 0.73)),
                 ),
+                (
+                    Button,
+                    OpenCalendarButton,
+                    Node {
+                        height: px(44),
+                        padding: UiRect::horizontal(px(16)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+                    children![(
+                        Text::new("Calendar"),
+                        TextFont::from_font_size(16.0),
+                        TextColor(Color::WHITE),
+                    )],
+                )
             ],
         )],
     ));

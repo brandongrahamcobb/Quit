@@ -23,6 +23,7 @@ use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
 use bevy::ecs::system::Commands;
 use db::pool::DbPool;
+use quit::plugin::calendar_plugin::CalendarPlugin;
 use quit::plugin::dashboard_plugin::DashboardPlugin;
 use quit::plugin::login_plugin::LoginPlugin;
 use quit::plugin::onboarding_plugin::OnboardingPlugin;
@@ -39,6 +40,7 @@ fn main() {
     app.add_plugins(LoginPlugin);
     app.add_plugins(OnboardingPlugin);
     app.add_plugins(DashboardPlugin);
+    app.add_plugins(CalendarPlugin);
     let db: DbPool = db::pool::new().expect("failed to create database pool");
     app.insert_resource(ClientMap(HashMap::new()));
     app.insert_resource(Database(db));

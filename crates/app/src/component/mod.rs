@@ -1,4 +1,5 @@
 pub mod account;
+pub mod calendar;
 pub mod dashboard;
 pub mod day;
 pub mod entry;

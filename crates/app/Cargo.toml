@@ -12,3 +12,4 @@ diesel = { version = "2.3.7", features = ["postgres"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tracing = "0.1.44"
 dotenvy = "0.15"
+chrono = { version = "0.4", features = ["clock"] }
