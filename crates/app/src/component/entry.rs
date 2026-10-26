@@ -18,28 +18,55 @@
  */
 use bevy::ecs::component::Component;
 use std::time::SystemTime;
+//
+// #[derive(Component)]
+// struct Entry {
+//     timestamp: SystemTime,
+//     route: RouteOfAdministration,
+//     chemical: Chemical
+// }
+//
+// enum RouteOfAdministration {
+//     Gum,
+//     Patch,
+//     Snus,
+//     Pouch,
+//     Lozenge,
+//     Dip,
+//     Leaf,
+//     Flower,
+//     Oil,
+//     Vape
+// }
+//
+// pub struct Chemical {
+//     common_name: String,
+//     iupac_name: String
+// }
 
 #[derive(Component)]
-struct Entry {
-    timestamp: SystemTime,
-    route: RouteOfAdministration,
-    chemical: Chemical
-}
+pub struct CalendarEntriesText;
 
-enum RouteOfAdministration {
-    Gum,
-    Patch,
-    Snus,
-    Pouch,
-    Lozenge,
-    Dip,
-    Leaf,
-    Flower,
-    Oil,
-    Vape
-}
+#[derive(Component)]
+pub struct CalendarAddEntryButton;
 
-pub struct Chemical {
-    common_name: String,
-    iupac_name: String
-}
+#[derive(Component)]
+pub struct CalendarEntryModal;
+
+#[derive(Component)]
+pub struct CalendarEntryCloseButton;
+
+#[derive(Component)]
+pub struct CalendarEntryMassField;
+
+#[derive(Component)]
+pub struct CalendarEntryTimeField;
+
+#[derive(Component)]
+pub struct CalendarEntryUnitButton;
+
+#[derive(Component)]
+pub struct CalendarEntrySaveButton;
+
+#[derive(Component)]
+pub struct CalendarEntryErrorText;

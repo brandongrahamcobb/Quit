@@ -18,13 +18,24 @@
  */
 
 
+use bevy::input::ButtonState;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
-use chrono::{Datelike, Days, Local, Timelike};
+use chrono::{Datelike, Days, Local, NaiveTime, Timelike};
 use crate::component::calendar::{
     CalendarBackButton, CalendarDateCell, CalendarDayViewButton, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekViewButton, OpenCalendarButton,
 };
-use crate::resource::calendar_resource::{CalendarState, CalendarView};
+use crate::component::entry::{CalendarAddEntryButton, CalendarEntriesText, CalendarEntryCloseButton, CalendarEntryErrorText, CalendarEntryMassField, CalendarEntryModal, CalendarEntrySaveButton, CalendarEntryTimeField, CalendarEntryUnitButton};
+use crate::resource::calendar_resource::{
+    CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarState, CalendarView, EntryFormField, EntryUnit,
+};
+use crate::resource::custom_resource::Database;
+use crate::resource::login_resource::AuthenticatedAccount;
 use crate::page::AppPage;
+use std::sync::mpsc::TryRecvError;
+use std::thread;
+use std::time::SystemTime;
+use tokio::runtime::Builder;
 
 pub fn handle_calendar_navigation(
     mut calendar: ResMut<CalendarState>,
@@ -104,9 +115,9 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                 Name::new("Calendar Navigation"),
             ))
             .with_children(|toolbar| {
-                spawn_calendar_button(toolbar, "‹", CalendarPreviousButton);
+                spawn_calendar_button(toolbar, "<", CalendarPreviousButton);
                 spawn_calendar_button(toolbar, "Today", CalendarTodayButton);
-                spawn_calendar_button(toolbar, "›", CalendarNextButton);
+                spawn_calendar_button(toolbar, ">", CalendarNextButton);
                 toolbar.spawn((
                     Text::new(calendar_period_label(&calendar)),
                     TextFont::from_font_size(18.0),
@@ -243,7 +254,26 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                         Text::new("No usage entries for this day yet."),
                         TextFont::from_font_size(13.0),
                         TextColor(Color::srgb(0.65, 0.70, 0.72)),
+                        CalendarEntriesText,
                     ),
+                    (
+                        Button,
+                        CalendarAddEntryButton,
+                        Node {
+                            width: px(120),
+                            height: px(36),
+                            padding: UiRect::horizontal(px(12)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.17, 0.42, 0.46)),
+                        children![(
+                            Text::new("Add entry"),
+                            TextFont::from_font_size(14.0),
+                            TextColor(Color::WHITE),
+                        )],
+                    )
                 ],
             ));
             page.spawn((
@@ -263,6 +293,128 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                     TextColor(Color::WHITE),
                 )],
             ));
+            page.spawn((
+                Node {
+                    position_type: PositionType::Absolute,
+                    left: px(0),
+                    right: px(0),
+                    top: px(0),
+                    bottom: px(0),
+                    display: Display::None,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.65)),
+                CalendarEntryModal,
+            ))
+            .with_children(|overlay| {
+                overlay
+                    .spawn((
+                        Node {
+                            width: px(420),
+                            padding: UiRect::all(px(24)),
+                            flex_direction: FlexDirection::Column,
+                            row_gap: px(16),
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.11, 0.14, 0.16)),
+                    ))
+                    .with_children(|modal| {
+                        modal.spawn((
+                            Text::new("New entry"),
+                            TextFont::from_font_size(20.0),
+                            TextColor(Color::WHITE),
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntryMassField,
+                            Node {
+                                width: px(340),
+                                height: px(42),
+                                padding: UiRect::horizontal(px(12)),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            Text::new("Mass: "),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntryTimeField,
+                            Node {
+                                width: px(340),
+                                height: px(42),
+                                padding: UiRect::horizontal(px(12)),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            Text::new("Time: "),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
+                        ));
+
+                        modal.spawn((
+                            Button,
+                            CalendarEntryUnitButton,
+                            Node {
+                                width: px(340),
+                                height: px(42),
+                                padding: UiRect::horizontal(px(12)),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            Text::new("Unit: g"),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
+                        ));
+                        modal.spawn((
+                            Text::new(""),
+                            TextFont::from_font_size(13.0),
+                            TextColor(Color::srgb(1.0, 0.45, 0.4)),
+                            CalendarEntryErrorText,
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntrySaveButton,
+                            Node {
+                                width: px(120),
+                                height: px(40),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.18, 0.42, 0.34)),
+                            children![(
+                                Text::new("Save entry"),
+                                TextFont::from_font_size(15.0),
+                                TextColor(Color::WHITE),
+                            )],
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntryCloseButton,
+                            Node {
+                                width: px(40),
+                                height: px(36),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+                            children![(
+                                Text::new("x"),
+                                TextFont::from_font_size(20.0),
+                                TextColor(Color::WHITE),
+                            )],
+                        ));
+                    });
+            });
         });
 }
 
@@ -330,7 +482,7 @@ fn calendar_period_label(calendar: &CalendarState) -> String {
             let end = start
                 .checked_add_days(Days::new(6))
                 .unwrap_or(start);
-            format!("{} – {}", start.format("%b %e"), end.format("%b %e, %Y"))
+            format!("{} - {}", start.format("%b %e"), end.format("%b %e, %Y"))
         }
         CalendarView::Month => calendar.visible_date.format("%B %Y").to_string(),
     }
@@ -633,4 +785,361 @@ fn spawn_calendar_view_button<T: Component>(
             TextFont::from_font_size(16.0),
             TextColor(Color::WHITE),
         ));
+}
+
+fn local_day_boundary(date: chrono::NaiveDate) -> Option<SystemTime> {
+    date.and_hms_opt(0, 0, 0)?
+        .and_local_timezone(Local)
+        .earliest()
+        .map(SystemTime::from)
+}
+
+pub fn request_calendar_entries(
+    database: Res<Database>,
+    account: Res<AuthenticatedAccount>,
+    calendar: Res<CalendarState>,
+    mut entries: ResMut<CalendarEntries>,
+    results: Res<CalendarEntryLoadResults>,
+) {
+    let date = calendar.selected_date;
+    if entries.requested_date == Some(date) {
+        return;
+    }
+    let Some(next_date) = date.succ_opt() else {
+        entries.error = Some("Could not determine the next calendar date.".to_owned());
+        return;
+    };
+    let (Some(start), Some(end)) = (
+        local_day_boundary(date),
+        local_day_boundary(next_date),
+    ) else {
+        entries.error = Some("Could not determine the selected day's local time range.".to_owned());
+        return;
+    };
+    entries.requested_date = Some(date);
+    entries.loaded_date = None;
+    entries.entries.clear();
+    entries.error = None;
+    let acc_id = account.id;
+    let pool = database.0.clone();
+    let sender = results.sender.clone();
+    thread::spawn(move || {
+        let result = match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => runtime
+                .block_on(
+                    db::calendar::entry::getters::get_entries_by_acc_id_between(
+                        &pool, acc_id, start, end,
+                    ),
+                )
+                .map_err(|error| error.to_string()),
+            Err(error) => Err(error.to_string()),
+        };
+        let _ = sender.send((acc_id, date, result));
+    });
+}
+
+pub fn apply_calendar_entry_results(
+    results: Res<CalendarEntryLoadResults>,
+    account: Res<AuthenticatedAccount>,
+    mut calendar_entries: ResMut<CalendarEntries>,
+) {
+    let receiver = match results.receiver.lock() {
+        Ok(receiver) => receiver,
+        Err(error) => {
+            calendar_entries.error = Some(error.to_string());
+            return;
+        }
+    };
+    loop {
+        match receiver.try_recv() {
+            Ok((acc_id, date, result)) => {
+                if acc_id != account.id
+                    || calendar_entries.requested_date != Some(date)
+                {
+                    continue;
+                }
+                match result {
+                    Ok(entries) => {
+                        calendar_entries.loaded_date = Some(date);
+                        calendar_entries.entries = entries;
+                        calendar_entries.error = None;
+                    }
+                    Err(error) => {
+                        calendar_entries.error = Some(error);
+                    }
+                }
+            }
+            Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
+        }
+    }
+}
+
+pub fn update_calendar_entries_text(
+    entries: Res<CalendarEntries>,
+    mut texts: Query<&mut Text, With<CalendarEntriesText>>,
+) {
+    let content = if let Some(error) = &entries.error {
+        format!("Could not load entries: {error}")
+    } else if entries.loaded_date != entries.requested_date {
+        "Loading entries…".to_owned()
+    } else if entries.entries.is_empty() {
+        "No usage entries for this day yet.".to_owned()
+    } else {
+        entries
+            .entries
+            .iter()
+            .map(|entry| {
+                let time = chrono::DateTime::<Local>::from(entry.occurred_at);
+                format!("{} · {} {}", time.format("%H:%M"), entry.mass, entry.units)
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    for mut text in &mut texts {
+        text.0 = content.clone();
+    }
+}
+
+pub fn toggle_calendar_entry_form(
+    open_buttons: Query<
+        &Interaction,
+        (Changed<Interaction>, With<CalendarAddEntryButton>),
+    >,
+    close_buttons: Query<
+        &Interaction,
+        (Changed<Interaction>, With<CalendarEntryCloseButton>),
+    >,
+    mut form: ResMut<CalendarEntryForm>,
+    mut modals: Query<&mut Node, With<CalendarEntryModal>>,
+) {
+    if open_buttons
+        .iter()
+        .any(|interaction| *interaction == Interaction::Pressed)
+    {
+        form.open = true;
+        form.error = None;
+    }
+    if close_buttons
+        .iter()
+        .any(|interaction| *interaction == Interaction::Pressed)
+    {
+        form.open = false;
+    }
+    for mut node in &mut modals {
+        node.display = if form.open {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+}
+
+pub fn focus_calendar_entry_field(
+    mut fields: Query<
+        (
+            &Interaction,
+            Option<&CalendarEntryMassField>,
+            Option<&CalendarEntryTimeField>,
+        ),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut form: ResMut<CalendarEntryForm>,
+) {
+    if !form.open {
+        return;
+    }
+    for (interaction, mass, time) in &mut fields {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        if mass.is_some() {
+            form.focused = EntryFormField::Mass;
+        } else if time.is_some() {
+            form.focused = EntryFormField::Time;
+        }
+    }
+}
+
+pub fn cycle_calendar_entry_unit(
+    buttons: Query<
+        &Interaction,
+        (Changed<Interaction>, With<CalendarEntryUnitButton>),
+    >,
+    mut form: ResMut<CalendarEntryForm>,
+) {
+    if !form.open {
+        return;
+    }
+    for interaction in &buttons {
+        if *interaction == Interaction::Pressed {
+            form.unit = match form.unit {
+                EntryUnit::Grams => EntryUnit::Milligrams,
+                EntryUnit::Milligrams => EntryUnit::Micrograms,
+                EntryUnit::Micrograms => EntryUnit::Grams,
+            };
+        }
+    }
+}
+
+pub fn edit_calendar_entry_fields(
+    mut keyboard: MessageReader<KeyboardInput>,
+    mut form: ResMut<CalendarEntryForm>,
+    mut fields: Query<(
+        &mut Text,
+        Option<&CalendarEntryMassField>,
+        Option<&CalendarEntryTimeField>,
+        Option<&CalendarEntryUnitButton>,
+    )>,
+) {
+    if form.open {
+        for input in keyboard.read() {
+            if input.state != ButtonState::Pressed {
+                continue;
+            }
+            match input.key_code {
+                KeyCode::Backspace => match form.focused {
+                    EntryFormField::Mass => {
+                        form.mass.pop();
+                    }
+                    EntryFormField::Time => {
+                        form.time.pop();
+                    }
+                },
+                KeyCode::Tab => {
+                    form.focused = match form.focused {
+                        EntryFormField::Mass => EntryFormField::Time,
+                        EntryFormField::Time => EntryFormField::Mass,
+                    };
+                }
+                _ => {
+                    let Some(text) = input.text.as_deref() else {
+                        continue;
+                    };
+                    match form.focused {
+                        EntryFormField::Mass => {
+                            form.mass.extend(text.chars().filter(char::is_ascii_digit));
+                        }
+                        EntryFormField::Time => {
+                            form.time.extend(
+                                text.chars()
+                                    .filter(|character| character.is_ascii_digit() || *character == ':'),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (mut text, mass, time, unit) in &mut fields {
+        if mass.is_some() {
+            text.0 = format!("Mass: {}", form.mass);
+        } else if time.is_some() {
+            text.0 = format!("Time: {}", form.time);
+        } else if unit.is_some() {
+            text.0 = format!("Unit: {}", form.unit.database_value());
+        }
+    }
+}
+
+pub fn save_calendar_entry(
+    buttons: Query<
+        &Interaction,
+        (Changed<Interaction>, With<CalendarEntrySaveButton>),
+    >,
+    mut form: ResMut<CalendarEntryForm>,
+    calendar: Res<CalendarState>,
+    account: Res<AuthenticatedAccount>,
+    database: Res<Database>,
+    results: Res<CalendarEntrySaveResults>,
+) {
+    if !form.open
+        || !buttons
+            .iter()
+            .any(|interaction| *interaction == Interaction::Pressed)
+    {
+        return;
+    }
+    let Some(mass) = form.mass.parse::<i32>().ok().filter(|mass| *mass > 0) else {
+        form.error = Some("Enter a mass greater than zero.".to_owned());
+        return;
+    };
+    let Ok(time) = NaiveTime::parse_from_str(&form.time, "%H:%M") else {
+        form.error = Some("Enter a time in HH:MM format.".to_owned());
+        return;
+    };
+    let Some(occurred_at) = calendar
+        .selected_date
+        .and_time(time)
+        .and_local_timezone(Local)
+        .earliest()
+        .map(SystemTime::from)
+    else {
+        form.error = Some("That local time does not exist.".to_owned());
+        return;
+    };
+    let acc_id = account.id;
+    let date = calendar.selected_date;
+    let new_entry = db::calendar::entry::model::NewEntryModel {
+        acc_id,
+        occurred_at,
+        mass,
+        units: form.unit.database_value().to_owned(),
+    };
+    let pool = database.0.clone();
+    let sender = results.sender.clone();
+    form.error = None;
+    thread::spawn(move || {
+        let result = match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => runtime
+                .block_on(db::calendar::entry::setters::insert_entry(
+                    &pool, new_entry,
+                ))
+                .map_err(|error| error.to_string()),
+            Err(error) => Err(error.to_string()),
+        };
+        let _ = sender.send((acc_id, date, result));
+    });
+}
+
+pub fn apply_calendar_entry_save_results(
+    results: Res<CalendarEntrySaveResults>,
+    account: Res<AuthenticatedAccount>,
+    mut form: ResMut<CalendarEntryForm>,
+    mut entries: ResMut<CalendarEntries>,
+) {
+    let receiver = match results.receiver.lock() {
+        Ok(receiver) => receiver,
+        Err(error) => {
+            form.error = Some(error.to_string());
+            return;
+        }
+    };
+    loop {
+        match receiver.try_recv() {
+            Ok((acc_id, _date, result)) if acc_id == account.id => match result {
+                Ok(_) => {
+                    form.open = false;
+                    form.mass.clear();
+                    form.time = Local::now().format("%H:%M").to_string();
+                    form.error = None;
+                    entries.requested_date = None;
+                }
+                Err(error) => {
+                    form.error = Some(error);
+                }
+            },
+            Ok(_) => {}
+            Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
+        }
+    }
+}
+
+pub fn update_calendar_entry_error(
+    form: Res<CalendarEntryForm>,
+    mut texts: Query<&mut Text, With<CalendarEntryErrorText>>,
+) {
+    let error = form.error.as_deref().unwrap_or("");
+    for mut text in &mut texts {
+        text.0 = error.to_owned();
+    }
 }

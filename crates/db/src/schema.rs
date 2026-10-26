@@ -47,8 +47,21 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    entries (id) {
+        id -> Int4,
+        acc_id -> Int4,
+        occurred_at -> Timestamp,
+        mass -> Int4,
+        units -> Text,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
+    entries,
     settings_wallpaper,
 );
 

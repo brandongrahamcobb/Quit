@@ -17,8 +17,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::sync::{Mutex, mpsc::{Receiver, Sender, channel}};
+
 use bevy::prelude::*;
 use chrono::{Datelike, Duration, Local, NaiveDate};
+use db::calendar::entry::model::EntryModel;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CalendarView {
@@ -109,5 +112,99 @@ impl CalendarState {
                 .checked_add_signed(Duration::days(index as i64))
                 .unwrap_or(grid_start)
         })
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct CalendarEntries {
+    pub loaded_date: Option<NaiveDate>,
+    pub requested_date: Option<NaiveDate>,
+    pub entries: Vec<EntryModel>,
+    pub error: Option<String>,
+}
+
+pub type CalendarEntryLoadResult =
+    (i32, NaiveDate, Result<Vec<EntryModel>, String>);
+
+#[derive(Resource)]
+pub struct CalendarEntryLoadResults {
+    pub sender: Sender<CalendarEntryLoadResult>,
+    pub receiver: Mutex<Receiver<CalendarEntryLoadResult>>,
+}
+
+impl Default for CalendarEntryLoadResults {
+    fn default() -> Self {
+        let (sender, receiver) = channel();
+        Self {
+            sender,
+            receiver: Mutex::new(receiver),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum EntryUnit {
+    #[default]
+    Grams,
+    Milligrams,
+    Micrograms,
+}
+
+impl EntryUnit {
+    pub const fn database_value(self) -> &'static str {
+        match self {
+            Self::Grams => "g",
+            Self::Milligrams => "mg",
+            Self::Micrograms => "ug",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum EntryFormField {
+    #[default]
+    Mass,
+    Time,
+}
+
+#[derive(Resource)]
+pub struct CalendarEntryForm {
+    pub open: bool,
+    pub mass: String,
+    pub time: String,
+    pub unit: EntryUnit,
+    pub focused: EntryFormField,
+    pub error: Option<String>,
+}
+
+impl Default for CalendarEntryForm {
+    fn default() -> Self {
+        Self {
+            open: false,
+            mass: String::new(),
+            time: Local::now().format("%H:%M").to_string(),
+            unit: EntryUnit::default(),
+            focused: EntryFormField::default(),
+            error: None,
+        }
+    }
+}
+
+pub type CalendarEntrySaveResult =
+    (i32, NaiveDate, Result<EntryModel, String>);
+
+#[derive(Resource)]
+pub struct CalendarEntrySaveResults {
+    pub sender: Sender<CalendarEntrySaveResult>,
+    pub receiver: Mutex<Receiver<CalendarEntrySaveResult>>,
+}
+
+impl Default for CalendarEntrySaveResults {
+    fn default() -> Self {
+        let (sender, receiver) = channel();
+        Self {
+            sender,
+            receiver: Mutex::new(receiver),
+        }
     }
 }
