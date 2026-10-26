@@ -23,7 +23,7 @@ use std::sync::Mutex;
 
 #[derive(Debug)]
 pub enum LoginResult {
-    Authenticated { id: i32, username: String },
+    Authenticated { id: i32, username: String, accepted_tos: bool, quit_status: Option<String> },
     InvalidCredentials,
     DatabaseUnavailable,
 }

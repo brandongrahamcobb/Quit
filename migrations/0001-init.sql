@@ -8,6 +8,7 @@ CREATE TABLE accounts (
     accepted_tos BOOLEAN NOT NULL DEFAULT FALSE,
     banned BOOLEAN NOT NULL DEFAULT FALSE,
     admin BOOLEAN NOT NULL DEFAULT FALSE,
+    quit_status TEXT CHECK (quit_status IN ('not_ready', 'ready_to_quit', 'already_quit')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -65,6 +65,21 @@ pub async fn update_account(
     .await
 }
 
+pub async fn set_quit_status_by_acc_id(
+    pool: &DbPool,
+    acc_id: i32,
+    quit_status: String,
+) -> Result<AccountModel, DatabaseError> {
+    pool::spawn_db(pool, move |conn| {
+        diesel::update(accounts::table.filter(accounts::id.eq(acc_id)))
+            .set((
+                accounts::quit_status.eq(Some(quit_status)),
+            ))
+            .get_result::<AccountModel>(conn)
+    })
+    .await
+}
+
 // pub async fn delete_acc_by_id(pool: &DbPool, acc_id: i32) -> Result<usize, DatabaseError> {
 //     pool::spawn_db(pool, move |conn| {
 //         diesel::delete(accounts::table.filter(accounts::id.eq(acc_id))).execute(conn)

@@ -28,6 +28,7 @@ diesel::table! {
         accepted_tos -> Bool,
         banned -> Bool,
         admin -> Bool,
+        quit_status -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
     }

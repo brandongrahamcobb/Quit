@@ -1,5 +1,5 @@
 /* app/src/component/account.rs
- * The purpose of this module is to provide an account component.
+ * The purpose of this module is to provide account components.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *

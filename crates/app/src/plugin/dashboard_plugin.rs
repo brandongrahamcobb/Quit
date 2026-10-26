@@ -22,7 +22,7 @@ use crate::page::AppPage;
 use crate::resource::settings_resource::{WallpaperFiles, WallpaperSettings, WallpaperSettingsLoadResults};
 use crate::system::dashboard::setup_dashboard;
 use crate::system::settings::{setup_settings_controls, select_settings_page};
-use crate::system::settings_wallpaper::{adjust_wallpaper_stretch, apply_loaded_wallpaper_settings, apply_wallpaper, discover_wallpaper_files, load_wallpaper_settings, populate_wallpaper_choices, select_wallpaper, select_wallpaper_mode, toggle_wallpaper_modal, toggle_wallpaper_mode_menu, toggle_wallpaper_tiles, update_tiled_controls, update_wallpaper_mode_label};
+use crate::system::settings_wallpaper::{adjust_wallpaper_stretch, apply_loaded_wallpaper_settings, apply_wallpaper, discover_wallpaper_files, load_wallpaper_settings, populate_wallpaper_choices, save_wallpaper_settings, select_wallpaper, select_wallpaper_mode, toggle_wallpaper_modal, toggle_wallpaper_mode_menu, toggle_wallpaper_tiles, update_tiled_controls, update_wallpaper_mode_label};
 
 pub struct DashboardPlugin;
 
@@ -44,6 +44,7 @@ impl Plugin for DashboardPlugin {
                     toggle_wallpaper_tiles,
                     adjust_wallpaper_stretch,
                     apply_wallpaper,
+                    save_wallpaper_settings,
                     update_tiled_controls,
                     update_wallpaper_mode_label
                 ).chain().run_if(in_state(AppPage::Dashboard))

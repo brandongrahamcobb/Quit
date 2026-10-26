@@ -24,4 +24,5 @@ pub enum AppPage {
     #[default]
     Login,
     Dashboard,
+    Onboarding
 }

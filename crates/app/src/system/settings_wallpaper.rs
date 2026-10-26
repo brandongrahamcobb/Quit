@@ -36,7 +36,7 @@ use crate::resource::login_resource::AuthenticatedAccount;
 use crate::resource::settings_resource::WallpaperSettingsLoadResults;
 
 #[derive(Default)]
-struct WallpaperSaveDebounce {
+pub struct WallpaperSaveDebounce {
     dirty: bool,
     timer: Option<Timer>,
 }

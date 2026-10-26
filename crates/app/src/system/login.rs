@@ -178,7 +178,7 @@ pub fn submit_login(
         let outcome = match Builder::new_current_thread().build() {
             Ok(runtime) => runtime.block_on(async move {
                 match get_acc_model_by_username(&pool, username).await {
-                    Ok(account) if account.banned || !account.accepted_tos => {
+                    Ok(account) if account.banned => {
                         LoginResult::InvalidCredentials
                     }
                     Ok(account) => match inc::account::authenticate(account.password, password) {
@@ -186,6 +186,8 @@ pub fn submit_login(
                             Some(id) => LoginResult::Authenticated {
                                 id,
                                 username: account.username,
+                                accepted_tos: account.accepted_tos,
+                                quit_status: account.quit_status,
                             },
                             None => LoginResult::DatabaseUnavailable,
                         },
@@ -236,9 +238,9 @@ pub fn poll_login_results(
     };
     pending.0 = false;
     match result {
-        LoginResult::Authenticated { id, username } => {
+        LoginResult::Authenticated { id, username, accepted_tos, quit_status } => {
             commands.insert_resource(AuthenticatedAccount { id, username });
-            next_page.set(AppPage::Dashboard);
+            next_page.set(if accepted_tos && quit_status.is_some() { AppPage::Dashboard } else { AppPage::Onboarding });
         }
         LoginResult::InvalidCredentials => {
             for mut text in &mut status {
