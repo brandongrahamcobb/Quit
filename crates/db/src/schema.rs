@@ -47,6 +47,24 @@ diesel::table! {
     }
 }
 
+    diesel::table! {
+    compounds (id) {
+        id -> Int4,
+        acc_id -> Int4,
+        name -> Text,
+        half_life_seconds -> Nullable<Float8>,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    compound_metabolites (parent_compound_id, metabolite_compound_id) {
+        parent_compound_id -> Int4,
+        metabolite_compound_id -> Int4,
+    }
+}
+
 diesel::table! {
     entries (id) {
         id -> Int4,
@@ -56,13 +74,60 @@ diesel::table! {
         units -> Text,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
+        substance_id -> Nullable<Int4>,
+        route_id -> Nullable<Int4>,
+    }
+}
+
+diesel::table! {
+    routes (id) {
+        id -> Int4,
+        acc_id -> Int4,
+        name -> Text,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    substance_compounds (substance_id, compound_id) {
+        substance_id -> Int4,
+        compound_id -> Int4,
+        compound_amount -> Int8,
+        compound_units -> Text,
+        substance_amount -> Int8,
+        substance_units -> Text,
+    }
+}
+
+diesel::table! {
+    substance_routes (substance_id, route_id) {
+        substance_id -> Int4,
+        route_id -> Int4,
+    }
+}
+
+diesel::table! {
+    substances (id) {
+        id -> Int4,
+        acc_id -> Int4,
+        name -> Text,
+        kind -> Text,
+        created_at -> Nullable<Timestamp>,
+        updated_at -> Timestamp,
     }
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
+    compounds,
+    compound_metabolites,
     entries,
+    routes,
     settings_wallpaper,
+    substance_compounds,
+    substance_routes,
+    substances,
 );
 
 
