@@ -1,5 +1,5 @@
-/* app/src/resource/custom_resource.rs
- * The purpose of this module is to define client resources.
+/* app/src/resource/calendar_resource.rs
+ * The purpose of this module is to define calendar resources.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *
@@ -41,7 +41,6 @@ pub struct CalendarState {
 impl Default for CalendarState {
     fn default() -> Self {
         let today = Local::now().date_naive();
-
         Self {
             view: CalendarView::Month,
             visible_date: today,
@@ -173,6 +172,8 @@ pub struct CalendarEntryForm {
     pub mass: String,
     pub time: String,
     pub unit: EntryUnit,
+    pub substance_id: Option<i32>,
+    pub route_id: Option<i32>,
     pub focused: EntryFormField,
     pub error: Option<String>,
 }
@@ -184,6 +185,8 @@ impl Default for CalendarEntryForm {
             mass: String::new(),
             time: Local::now().format("%H:%M").to_string(),
             unit: EntryUnit::default(),
+            substance_id: None,
+            route_id: None,
             focused: EntryFormField::default(),
             error: None,
         }

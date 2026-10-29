@@ -30,6 +30,8 @@ pub struct EntryModel {
     pub occurred_at: SystemTime,
     pub mass: i32,
     pub units: String,
+    pub substance_id: i32,
+    pub route_id: i32,
     pub created_at: Option<SystemTime>,
     pub updated_at: SystemTime,
 }

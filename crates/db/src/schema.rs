@@ -47,7 +47,7 @@ diesel::table! {
     }
 }
 
-    diesel::table! {
+diesel::table! {
     compounds (id) {
         id -> Int4,
         acc_id -> Int4,
@@ -72,10 +72,10 @@ diesel::table! {
         occurred_at -> Timestamp,
         mass -> Int4,
         units -> Text,
+        substance_id -> Int4,
+        route_id -> Int4,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
-        substance_id -> Nullable<Int4>,
-        route_id -> Nullable<Int4>,
     }
 }
 

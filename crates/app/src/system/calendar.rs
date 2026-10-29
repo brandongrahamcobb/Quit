@@ -1,5 +1,5 @@
-/* app/src/system/dashboard.rs
- * The purpose of this module is to provide a dashboard system.
+/* app/src/system/calendar.rs
+ * The purpose of this module is to provide a calendar system.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *

@@ -6,3 +6,4 @@ pub mod entry;
 pub mod login;
 pub mod onboarding;
 pub mod settings;
+pub mod substance;

@@ -85,12 +85,11 @@ CREATE TABLE entries (
     units TEXT NOT NULL CHECK (units IN ('g', 'mg', 'ug')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    substance_id INTEGER,
-    route_id INTEGER,
-    CHECK ((substance_id IS NULL) = (route_id IS NULL)),
+    substance_id INTEGER NOT NULL,
+    route_id INTEGER NOT NULL,
     FOREIGN KEY (substance_id, route_id)
         REFERENCES substance_routes (substance_id, route_id)
-        ON DELETE SET NULL
+        ON DELETE RESTRICT
 );
 
 

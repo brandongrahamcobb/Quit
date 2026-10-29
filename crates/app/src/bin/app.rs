@@ -27,6 +27,7 @@ use quit::plugin::calendar_plugin::CalendarPlugin;
 use quit::plugin::dashboard_plugin::DashboardPlugin;
 use quit::plugin::login_plugin::LoginPlugin;
 use quit::plugin::onboarding_plugin::OnboardingPlugin;
+use quit::plugin::substance_plugin::SubstancePlugin;
 use quit::resource::custom_resource::{ClientMap, Database};
 use tracing_subscriber::EnvFilter;
 
@@ -41,6 +42,7 @@ fn main() {
     app.add_plugins(OnboardingPlugin);
     app.add_plugins(DashboardPlugin);
     app.add_plugins(CalendarPlugin);
+    app.add_plugins(SubstancePlugin);
     let db: DbPool = db::pool::new().expect("failed to create database pool");
     app.insert_resource(ClientMap(HashMap::new()));
     app.insert_resource(Database(db));
