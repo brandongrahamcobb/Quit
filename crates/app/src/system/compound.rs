@@ -24,7 +24,7 @@ use bevy::prelude::*;
 use db::compound::getters::{get_all_compound_models, get_metabolites_by_compound_id};
 use db::compound::model::NewCompoundModel;
 use db::compound::setters::{delete_compound, insert_compound, set_compound_metabolites, update_compound};
-use crate::component::compound::{CompoundAddButton, CompoundCancelButton, CompoundCommonNameButton, CompoundCommonNameText, CompoundDeleteButton, CompoundDeleteCancelButton, CompoundDeleteConfirmButton, CompoundDeleteDialog, CompoundDeleteErrorText, CompoundDeleteNameText, CompoundEditButton, CompoundErrorText, CompoundFormOverlay, CompoundFormRoot, CompoundHalfLifeButton, CompoundHalfLifeText, CompoundImagePreview, CompoundImagePreviewHandle, CompoundImageRemoveButton, CompoundImageUploadButton, CompoundIupacNameButton, CompoundIupacNameText, CompoundListContainer, CompoundListItem, CompoundListText, CompoundMetaboliteItem, CompoundMetaboliteListContainer, CompoundMetaboliteListText, CompoundMetaboliteToggleButton, CompoundNavigationRoot, CompoundPreviewButton, CompoundSaveButton, CompoundSearchButton, CompoundSearchText, OpenCompoundsButton};
+use crate::component::compound::{CompoundAddButton, CompoundCancelButton, CompoundCommonNameButton, CompoundCommonNameText, CompoundDashboardButton, CompoundDeleteButton, CompoundDeleteCancelButton, CompoundDeleteConfirmButton, CompoundDeleteDialog, CompoundDeleteErrorText, CompoundDeleteNameText, CompoundEditButton, CompoundErrorText, CompoundFormOverlay, CompoundFormRoot, CompoundHalfLifeButton, CompoundHalfLifeText, CompoundImagePreview, CompoundImagePreviewHandle, CompoundImageRemoveButton, CompoundImageUploadButton, CompoundIupacNameButton, CompoundIupacNameText, CompoundListContainer, CompoundListItem, CompoundListText, CompoundMetaboliteItem, CompoundMetaboliteListContainer, CompoundMetaboliteListText, CompoundMetaboliteToggleButton, CompoundNavigationRoot, CompoundPreviewButton, CompoundPreviewImage, CompoundSaveButton, CompoundSearchButton, CompoundSearchText, OpenCompoundsButton};
 use crate::page::AppPage;
 use crate::resource::compound_resource::{CompoundDeleteResults, CompoundEntry, CompoundFormField, CompoundImageUploadReceiver, CompoundLoadReceiver, CompoundMetaboliteLoadResults, CompoundPageState, CompoundSaveResults};
 use crate::resource::custom_resource::Database;
@@ -139,13 +139,33 @@ pub fn spawn_compound_navigation(mut commands: Commands) {
             CompoundNavigationRoot,
         ))
         .with_children(|page| {
-            page.spawn((
-                Text::new("Compounds"),
-                TextFont {
-                    font_size: 28.0,
-                    ..default()
-                },
-            ));
+            page.spawn(Node {
+                width: percent(100),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::SpaceBetween,
+                ..default()
+            }).with_children(|header| {
+                header.spawn((
+                    Text::new("Compounds"),
+                    TextFont {
+                        font_size: 28.0,
+                        ..default()
+                    },
+                ));
+                header.spawn((
+                    Button,
+                    CompoundDashboardButton,
+                    Node {
+                        padding: UiRect::axes(px(12), px(8)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.20, 0.24, 0.28)),
+                    BorderColor::all(Color::srgb(0.35, 0.40, 0.45)),
+                )).with_children(|button| {
+                    button.spawn(Text::new("Dashboard"));
+                });
+            });
             page.spawn(Node {
                 width: percent(100),
                 flex_direction: FlexDirection::Row,
@@ -537,10 +557,12 @@ pub fn update_compound_list(
                 ))
                 .with_children(|preview| {
                     if let Some(path) = &compound.image_path {
+                        let image_handle = asset_server.load::<Image>(path.clone());
                         preview.spawn((
-                            ImageNode::new(asset_server.load(path.clone())),
+                            ImageNode::new(image_handle.clone()),
+                            CompoundPreviewImage(image_handle),
                             Node {
-                                width: percent(100),
+                                width: px(240),
                                 height: px(220),
                                 ..default()
                             },
@@ -562,7 +584,7 @@ pub fn handle_compound_form_buttons(
     >,
     edit_buttons: Query<
         (&Interaction, &CompoundEditButton),
-        Changed<Interaction>,
+        (Changed<Interaction>, With<CompoundEditButton>),
     >,
     cancel_buttons: Query<
         &Interaction,
@@ -1027,7 +1049,7 @@ pub fn begin_compound_image_upload(
                 .map(str::to_ascii_lowercase)
                 .filter(|extension| ["png", "jpg", "jpeg", "webp"].contains(&extension.as_str()))
                 .ok_or_else(|| "Unsupported image format.".to_owned())?;
-            let directory = std::path::Path::new("assets/compound_images");
+            let directory = std::path::Path::new("crates/app/assets/compound_images");
             std::fs::create_dir_all(directory)
                 .map_err(|error| format!("Could not create image directory: {error}"))?;
             let filename = format!(
@@ -1239,5 +1261,38 @@ pub fn update_compound_delete_dialog_text(
     }
     for mut text in &mut name_text {
         text.0 = state.deleting_name.as_ref().map(|name| format!("Are you sure you want to delete {}?", name)).unwrap_or_default();
+    }
+}
+
+pub fn update_compound_preview_image_sizes(
+    images: Res<Assets<Image>>,
+    mut previews: Query<(&CompoundPreviewImage, &mut Node)>,
+) {
+    for (preview, mut node) in &mut previews {
+        let Some(image) = images.get(&preview.0) else {
+            continue;
+        };
+        let size = image.size();
+        let scale = (240.0 / size.x as f32).min(220.0 / size.y as f32).min(1.0);
+        node.width = px(size.x as f32 * scale);
+        node.height = px(size.y as f32 * scale);
+    }
+}
+
+pub fn handle_compound_dashboard_button(
+    buttons: Query<&Interaction, (Changed<Interaction>, With<CompoundDashboardButton>)>,
+    mut next_page: ResMut<NextState<AppPage>>,
+) {
+    if buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
+        next_page.set(AppPage::Dashboard);
+    }
+}
+
+pub fn cleanup_compound_navigation(
+    mut commands: Commands,
+    roots: Query<Entity, With<CompoundNavigationRoot>>,
+) {
+    for entity in &roots {
+        commands.entity(entity).despawn();
     }
 }

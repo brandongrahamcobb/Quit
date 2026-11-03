@@ -126,3 +126,9 @@ pub struct CompoundDeleteErrorText;
 
 #[derive(Component)]
 pub struct CompoundDeleteNameText;
+
+#[derive(Component)]
+pub struct CompoundPreviewImage(pub Handle<Image>);
+
+#[derive(Component)]
+pub struct CompoundDashboardButton;
