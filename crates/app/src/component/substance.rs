@@ -28,3 +28,32 @@ pub struct SubstanceBackButton;
 #[derive(Component)]
 pub struct SubstanceNavigationRoot;
 
+#[derive(Component)]
+pub struct SubstanceListText;
+
+#[derive(Component)]
+pub struct SubstanceAddButton;
+
+#[derive(Component)]
+pub struct SubstanceFormRoot;
+
+#[derive(Component)]
+pub struct SubstanceFormNameButton;
+
+#[derive(Component)]
+pub struct SubstanceFormNameText;
+
+#[derive(Component)]
+pub struct SubstanceFormKindButton;
+
+#[derive(Component)]
+pub struct SubstanceFormKindText;
+
+#[derive(Component)]
+pub struct SubstanceFormSaveButton;
+
+#[derive(Component)]
+pub struct SubstanceFormCancelButton;
+
+#[derive(Component)]
+pub struct SubstanceFormErrorText;

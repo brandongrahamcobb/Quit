@@ -18,17 +18,68 @@
  */
 
 use bevy::prelude::*;
+use db::substance::model::SubstanceModel;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Mutex;
 
 #[derive(Resource, Default)]
 pub struct SubstanceEntries {
+    pub entries: Vec<SubstanceModel>,
+    pub error: Option<String>,
+    pub failed_for: Option<i32>,
+    pub loaded_for: Option<i32>,
+    pub loading_for: Option<i32>,
 }
 
 #[derive(Resource)]
-pub struct SubstanceState {
+pub struct SubstanceEntryLoadResults {
+    pub receiver: Mutex<Receiver<(i32, Result<Vec<SubstanceModel>, String>)>>,
+    pub sender: Sender<(i32, Result<Vec<SubstanceModel>, String>)>,
 }
 
-impl Default for SubstanceState {
+impl Default for SubstanceEntryLoadResults {
     fn default() -> Self {
-        Self {}
+        let (sender, receiver) = std::sync::mpsc::channel();
+        Self {
+            receiver: Mutex::new(receiver),
+            sender,
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct SubstanceEntrySaveResults {
+    pub receiver: Mutex<Receiver<(i32, Result<SubstanceModel, String>)>>,
+    pub sender: Sender<(i32, Result<SubstanceModel, String>)>,
+}
+
+impl Default for SubstanceEntrySaveResults {
+    fn default() -> Self {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        Self {
+            receiver: Mutex::new(receiver),
+            sender,
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct SubstanceForm {
+    pub error: Option<String>,
+    pub kind: String,
+    pub name: String,
+    pub name_focused: bool,
+    pub open: bool,
+}
+
+impl Default for SubstanceForm {
+    fn default() -> Self {
+        Self {
+            error: None,
+            kind: "simple".to_owned(),
+            name: String::new(),
+            name_focused: true,
+            open: false,
+        }
     }
 }

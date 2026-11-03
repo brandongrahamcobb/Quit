@@ -34,7 +34,7 @@ pub enum DatabaseError {
     #[error("Configuration error in database layer")]
     ConfigError(#[from] ConfigError),
 
-    #[error("Entry in database not found in database layer")]
+    #[error("Entry in database not found in database layer: {0}")]
     DieselError(#[from] diesel::result::Error),
 
     #[error("Concurrency join error in database layer")]

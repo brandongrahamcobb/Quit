@@ -18,39 +18,36 @@
 */
 use bevy::prelude::*;
 
-use crate::resource::substance_resource::SubstanceState;
 use crate::page::AppPage;
-use crate::system::substance::spawn_substance_navigation;
+use crate::resource::substance_resource::{SubstanceEntries, SubstanceEntryLoadResults, SubstanceEntrySaveResults, SubstanceForm};
+use crate::system::substance::{apply_substance_entry_results, apply_substance_entry_save_results, cycle_substance_kind, edit_substance_name, focus_substance_name_field, open_substances, request_substance_entries, save_substance, spawn_substance_navigation, toggle_substance_form, update_substance_text};
 
 pub struct SubstancePlugin;
 
 impl Plugin for SubstancePlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AppPage>()
-            .init_resource::<SubstanceState>()
-            // .init_resource::<SubstanceEntriens>()
-            // .init_resource::<SubstanceEntryLoadResults>()
-            // .init_resource::<SubstanceEntryForm>()
-            // .init_resource::<SubstanceEntrySaveResults>()
-            // .add_systems(
-            //     Update,
-            //     (
-            //         handle_calendar_navigation,
-            //         select_calendar_view,
-            //         select_calendar_date,
-            //         request_calendar_entries,
-            //         apply_calendar_entry_results,
-            //         refresh_calendar_page,
-            //         toggle_calendar_entry_form,
-            //         focus_calendar_entry_field,
-            //         cycle_calendar_entry_unit,
-            //         edit_calendar_entry_fields,
-            //         save_calendar_entry,
-            //         apply_calendar_entry_save_results,
-            //         update_calendar_entry_error,
-            //         update_calendar_entries_text,
-            //    ).chain().run_if(in_state(AppPage::Substance))
-            // )
+            .init_resource::<SubstanceEntries>()
+            .init_resource::<SubstanceEntryLoadResults>()
+            .init_resource::<SubstanceEntrySaveResults>()
+            .init_resource::<SubstanceForm>()
+            .add_systems(Update, open_substances)
+            .add_systems(
+                Update,
+                (
+                    request_substance_entries,
+                    apply_substance_entry_results,
+                    toggle_substance_form,
+                    focus_substance_name_field,
+                    cycle_substance_kind,
+                    edit_substance_name,
+                    save_substance,
+                    apply_substance_entry_save_results,
+                    update_substance_text,
+                )
+                    .chain()
+                    .run_if(in_state(AppPage::Substance)),
+            )
             .add_systems(
                 OnEnter(AppPage::Substance),
                 (

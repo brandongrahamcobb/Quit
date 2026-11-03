@@ -21,6 +21,7 @@
 use bevy::prelude::*;
 
 use crate::component::calendar::OpenCalendarButton;
+use crate::component::compound::OpenCompoundsButton;
 use crate::component::dashboard::DashboardScreen;
 use crate::component::settings::WallpaperBackground;
 use crate::component::substance::OpenSubstanceButton;
@@ -93,7 +94,7 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
                 ),
                 (
                     Button,
-                    OpenSubstanceButton,
+                    OpenCompoundsButton,
                     Node {
                         height: px(44),
                         padding: UiRect::horizontal(px(16)),
@@ -103,7 +104,7 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
                     },
                     BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
                     children![(
-                        Text::new("Substance"),
+                        Text::new("Compounds"),
                         TextFont::from_font_size(16.0),
                         TextColor(Color::WHITE),
                     )],

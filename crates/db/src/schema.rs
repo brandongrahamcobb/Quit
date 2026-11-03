@@ -50,9 +50,10 @@ diesel::table! {
 diesel::table! {
     compounds (id) {
         id -> Int4,
-        acc_id -> Int4,
-        name -> Text,
-        half_life_seconds -> Nullable<Float8>,
+        common_name -> Text,
+        iupac_name -> Text,
+        half_life_seconds -> Nullable<Int8>,
+        image_path -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
     }

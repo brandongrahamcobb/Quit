@@ -1,4 +1,4 @@
-/* db/src/account/getters.rs
+/* db/src/substance/getters.rs
  * The purpose of this module is to provide database getters for substances.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
