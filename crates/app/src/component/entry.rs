@@ -17,32 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 use bevy::ecs::component::Component;
-use std::time::SystemTime;
-//
-// #[derive(Component)]
-// struct Entry {
-//     timestamp: SystemTime,
-//     route: RouteOfAdministration,
-//     chemical: Chemical
-// }
-//
-// enum RouteOfAdministration {
-//     Gum,
-//     Patch,
-//     Snus,
-//     Pouch,
-//     Lozenge,
-//     Dip,
-//     Leaf,
-//     Flower,
-//     Oil,
-//     Vape
-// }
-//
-// pub struct Chemical {
-//     common_name: String,
-//     iupac_name: String
-// }
 
 #[derive(Component)]
 pub struct CalendarEntriesText;
@@ -57,16 +31,19 @@ pub struct CalendarEntryModal;
 pub struct CalendarEntryCloseButton;
 
 #[derive(Component)]
-pub struct CalendarEntryMassField;
-
-#[derive(Component)]
 pub struct CalendarEntryTimeField;
-
-#[derive(Component)]
-pub struct CalendarEntryUnitButton;
 
 #[derive(Component)]
 pub struct CalendarEntrySaveButton;
 
 #[derive(Component)]
 pub struct CalendarEntryErrorText;
+
+#[derive(Component)]
+pub struct CalendarEntryProductButton;
+
+#[derive(Component)]
+pub struct CalendarEntryProductList;
+
+#[derive(Component)]
+pub struct CalendarEntryProductOption(pub i32);

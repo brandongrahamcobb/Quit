@@ -22,13 +22,13 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use db::compound::getters::{get_all_compound_models, get_metabolites_by_compound_id};
-use db::compound::model::NewCompoundModel;
+use db::compound::model::{NewCompoundModel, UpdateCompoundModel};
 use db::compound::setters::{delete_compound, insert_compound, set_compound_metabolites, update_compound};
 use crate::component::compound::{CompoundAddButton, CompoundCancelButton, CompoundCommonNameButton, CompoundCommonNameText, CompoundDashboardButton, CompoundDeleteButton, CompoundDeleteCancelButton, CompoundDeleteConfirmButton, CompoundDeleteDialog, CompoundDeleteErrorText, CompoundDeleteNameText, CompoundEditButton, CompoundErrorText, CompoundFormOverlay, CompoundFormRoot, CompoundHalfLifeButton, CompoundHalfLifeText, CompoundImagePreview, CompoundImagePreviewHandle, CompoundImageRemoveButton, CompoundImageUploadButton, CompoundIupacNameButton, CompoundIupacNameText, CompoundListContainer, CompoundListItem, CompoundListText, CompoundMetaboliteItem, CompoundMetaboliteListContainer, CompoundMetaboliteListText, CompoundMetaboliteToggleButton, CompoundNavigationRoot, CompoundPreviewButton, CompoundPreviewImage, CompoundSaveButton, CompoundSearchButton, CompoundSearchText, OpenCompoundsButton};
 use crate::page::AppPage;
 use crate::resource::compound_resource::{CompoundDeleteResults, CompoundEntry, CompoundFormField, CompoundImageUploadReceiver, CompoundLoadReceiver, CompoundMetaboliteLoadResults, CompoundPageState, CompoundSaveResults};
 use crate::resource::custom_resource::Database;
-use crate::resource::login_resource::AuthenticatedAccount;
+// use crate::resource::login_resource::AuthenticatedAccount;
 use std::sync::mpsc::{TryRecvError, channel};
 use std::thread;
 use tokio::runtime::Builder;
@@ -719,8 +719,6 @@ pub fn edit_compound_fields(
     }
 }
 
-
-
 pub fn save_compound(
     buttons: Query<&Interaction, (Changed<Interaction>, With<CompoundSaveButton>)>,
     mut state: ResMut<CompoundPageState>,
@@ -755,12 +753,6 @@ pub fn save_compound(
             }
         }
     };
-    let new_compound = NewCompoundModel {
-        common_name,
-        iupac_name,
-        half_life_seconds,
-        image_path,
-    };
     let pool = database.0.clone();
     let sender = results.sender.clone();
     state.error = None;
@@ -768,18 +760,23 @@ pub fn save_compound(
         let result = match Builder::new_current_thread().enable_all().build() {
             Ok(runtime) => runtime.block_on(async {
                 let compound_id = if let Some(id) = editing_id {
-                    update_compound(
-                        &pool,
-                        id,
-                        new_compound.common_name,
-                        new_compound.iupac_name,
-                        new_compound.half_life_seconds,
-                        new_compound.image_path,
-                    )
+                    let updated_compound = UpdateCompoundModel {
+                        common_name,
+                        iupac_name,
+                        half_life_seconds,
+                        image_path,
+                    };
+                    update_compound(&pool, id, updated_compound)
                     .await
                     .map_err(|error| error.to_string())?;
                     id
                 } else {
+                    let new_compound = NewCompoundModel {
+                        common_name,
+                        iupac_name,
+                        half_life_seconds,
+                        image_path,
+                    };
                     insert_compound(&pool, new_compound)
                         .await
                         .map_err(|error| error.to_string())?
@@ -1181,14 +1178,6 @@ pub fn handle_compound_delete_buttons(
                     node.display = Display::Flex;
                 }
             }
-            // if let Some(compound) = state.compounds.iter().find(|compound| compound.id == button.0) {
-            //     state.deleting_id = Some(compound.id);
-            //     state.deleting_name = Some(compound.common_name.clone());
-            //     state.delete_error = None;
-            //     if let Ok(mut node) = dialog.single_mut() {
-            //         node.display = Display::Flex;
-            //     }
-            // }
         }
     }
 }

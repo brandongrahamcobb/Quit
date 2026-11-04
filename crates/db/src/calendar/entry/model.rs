@@ -28,10 +28,7 @@ pub struct EntryModel {
     pub id: i32,
     pub acc_id: i32,
     pub occurred_at: SystemTime,
-    pub mass: i32,
-    pub units: String,
-    pub substance_id: i32,
-    pub route_id: i32,
+    pub product_id: i32,
     pub created_at: Option<SystemTime>,
     pub updated_at: SystemTime,
 }
@@ -41,6 +38,5 @@ pub struct EntryModel {
 pub struct NewEntryModel {
     pub acc_id: i32,
     pub occurred_at: SystemTime,
-    pub mass: i32,
-    pub units: String,
+    pub product_id: i32,
 }

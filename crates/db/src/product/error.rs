@@ -1,5 +1,5 @@
-/* db/src/substance/query/setters.rs
- * The purpose of this module is to provide database setters for substances.
+/* db/src/product/error.rs
+ * The purpose of this module is to provide errors related to db products.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *
@@ -17,22 +17,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::error::DatabaseError;
-use crate::pool;
-use crate::pool::DbPool;
-use crate::schema::substances;
-use crate::substance::model::{NewSubstanceModel, SubstanceModel};
-use diesel::expression_methods::*;
-use diesel::{QueryDsl, RunQueryDsl};
+use thiserror::Error;
 
-pub async fn insert_substance(
-    pool: &DbPool,
-    new_substance: NewSubstanceModel,
-) -> Result<SubstanceModel, DatabaseError> {
-    pool::spawn_db(pool, move |conn| {
-        diesel::insert_into(substances::table)
-            .values(new_substance)
-            .get_result::<SubstanceModel>(conn)
-    })
-    .await
+#[derive(Debug, Error)]
+pub enum ProductModelError {
+    #[error("No created at time found for product model in database layer: {0}")]
+    NoCreatedAt(i32),
 }

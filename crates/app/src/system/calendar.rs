@@ -22,17 +22,18 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use chrono::{Datelike, Days, Local, NaiveTime, Timelike};
+use db::product::getters::get_all_product_models;
 use crate::component::calendar::{
     CalendarBackButton, CalendarDateCell, CalendarDayViewButton, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekViewButton, OpenCalendarButton,
 };
-use crate::component::entry::{CalendarAddEntryButton, CalendarEntriesText, CalendarEntryCloseButton, CalendarEntryErrorText, CalendarEntryMassField, CalendarEntryModal, CalendarEntrySaveButton, CalendarEntryTimeField, CalendarEntryUnitButton};
+use crate::component::entry::{CalendarAddEntryButton, CalendarEntriesText, CalendarEntryCloseButton, CalendarEntryErrorText, CalendarEntryModal, CalendarEntryProductButton, CalendarEntryProductList, CalendarEntryProductOption, CalendarEntrySaveButton, CalendarEntryTimeField};
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarState, CalendarView, EntryFormField, EntryUnit,
+    CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductEntry, CalendarProductLoadReceiver, CalendarProducts, CalendarState, CalendarView, EntryFormField, 
 };
 use crate::resource::custom_resource::Database;
 use crate::resource::login_resource::AuthenticatedAccount;
 use crate::page::AppPage;
-use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{TryRecvError, channel};
 use std::thread;
 use std::time::SystemTime;
 use tokio::runtime::Builder;
@@ -329,7 +330,7 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                         ));
                         modal.spawn((
                             Button,
-                            CalendarEntryMassField,
+                            CalendarEntryProductButton,
                             Node {
                                 width: px(340),
                                 height: px(42),
@@ -338,9 +339,21 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                                 ..default()
                             },
                             BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
-                            Text::new("Mass: "),
+                            Text::new("Product: Select product"),
                             TextFont::from_font_size(15.0),
                             TextColor(Color::WHITE),
+                        ));
+                        modal.spawn((
+                            Node {
+                                width: px(340),
+                                max_height: px(180),
+                                flex_direction: FlexDirection::Column,
+                                overflow: Overflow::scroll_y(),
+                                display: Display::None,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            CalendarEntryProductList,
                         ));
                         modal.spawn((
                             Button,
@@ -354,22 +367,6 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                             },
                             BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
                             Text::new("Time: "),
-                            TextFont::from_font_size(15.0),
-                            TextColor(Color::WHITE),
-                        ));
-
-                        modal.spawn((
-                            Button,
-                            CalendarEntryUnitButton,
-                            Node {
-                                width: px(340),
-                                height: px(42),
-                                padding: UiRect::horizontal(px(12)),
-                                align_items: AlignItems::Center,
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
-                            Text::new("Unit: g"),
                             TextFont::from_font_size(15.0),
                             TextColor(Color::WHITE),
                         ));
@@ -876,107 +873,74 @@ pub fn apply_calendar_entry_results(
 
 pub fn update_calendar_entries_text(
     entries: Res<CalendarEntries>,
+    products: Res<CalendarProducts>,
     mut texts: Query<&mut Text, With<CalendarEntriesText>>,
 ) {
     let content = if let Some(error) = &entries.error {
         format!("Could not load entries: {error}")
     } else if entries.loaded_date != entries.requested_date {
         "Loading entries…".to_owned()
+    } else if !products.loaded {
+        "Loading products…".to_owned()
     } else if entries.entries.is_empty() {
         "No usage entries for this day yet.".to_owned()
     } else {
-        entries
-            .entries
-            .iter()
-            .map(|entry| {
-                let time = chrono::DateTime::<Local>::from(entry.occurred_at);
-                format!("{} · {} {}", time.format("%H:%M"), entry.mass, entry.units)
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+        entries.entries.iter().map(|entry| {
+            let time = chrono::DateTime::<Local>::from(entry.occurred_at);
+            let name = products.products.iter().find(|product| product.id == entry.product_id).map(|product| product.name.as_str()).unwrap_or("Unknown product");
+            format!("{} · {}", time.format("%H:%M"), name)
+        }).collect::<Vec<_>>().join("\n")
     };
     for mut text in &mut texts {
-        text.0 = content.clone();
+        **text = content.clone();
     }
 }
 
 pub fn toggle_calendar_entry_form(
-    open_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<CalendarAddEntryButton>),
-    >,
-    close_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<CalendarEntryCloseButton>),
-    >,
+    open_buttons: Query<&Interaction, (Changed<Interaction>, With<CalendarAddEntryButton>)>,
+    close_buttons: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryCloseButton>)>,
     mut form: ResMut<CalendarEntryForm>,
-    mut modals: Query<&mut Node, With<CalendarEntryModal>>,
+    mut lists: Query<&mut Node, (With<CalendarEntryProductList>, Without<CalendarEntryModal>)>,
+    mut modals: Query<&mut Node, (With<CalendarEntryModal>, Without<CalendarEntryProductList>)>,
+    mut product_buttons: Query<&mut Text, With<CalendarEntryProductButton>>,
 ) {
-    if open_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed)
-    {
+    let opening = open_buttons.iter().any(|interaction| *interaction == Interaction::Pressed);
+    let closing = close_buttons.iter().any(|interaction| *interaction == Interaction::Pressed);
+    if opening {
         form.open = true;
         form.error = None;
+        form.product_id = None;
+        form.product_selector_open = false;
+        form.time = Local::now().format("%H:%M").to_string();
+        for mut text in &mut product_buttons {
+            **text = "Product: Select product".to_string();
+        }
     }
-    if close_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed)
-    {
+    if closing {
         form.open = false;
+        form.product_selector_open = false;
     }
     for mut node in &mut modals {
-        node.display = if form.open {
-            Display::Flex
-        } else {
-            Display::None
-        };
+        node.display = if form.open { Display::Flex } else { Display::None };
+    }
+    for mut node in &mut lists {
+        node.display = if form.product_selector_open { Display::Flex } else { Display::None };
     }
 }
 
 pub fn focus_calendar_entry_field(
     mut fields: Query<
-        (
-            &Interaction,
-            Option<&CalendarEntryMassField>,
-            Option<&CalendarEntryTimeField>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
-    mut form: ResMut<CalendarEntryForm>,
-) {
-    if !form.open {
-        return;
-    }
-    for (interaction, mass, time) in &mut fields {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        if mass.is_some() {
-            form.focused = EntryFormField::Mass;
-        } else if time.is_some() {
-            form.focused = EntryFormField::Time;
-        }
-    }
-}
-
-pub fn cycle_calendar_entry_unit(
-    buttons: Query<
         &Interaction,
-        (Changed<Interaction>, With<CalendarEntryUnitButton>),
+        (Changed<Interaction>, With<CalendarEntryTimeField>),
     >,
     mut form: ResMut<CalendarEntryForm>,
 ) {
     if !form.open {
         return;
     }
-    for interaction in &buttons {
+    for interaction in &mut fields {
         if *interaction == Interaction::Pressed {
-            form.unit = match form.unit {
-                EntryUnit::Grams => EntryUnit::Milligrams,
-                EntryUnit::Milligrams => EntryUnit::Micrograms,
-                EntryUnit::Micrograms => EntryUnit::Grams,
-            };
+            form.focused = EntryFormField::Time;
         }
     }
 }
@@ -984,12 +948,7 @@ pub fn cycle_calendar_entry_unit(
 pub fn edit_calendar_entry_fields(
     mut keyboard: MessageReader<KeyboardInput>,
     mut form: ResMut<CalendarEntryForm>,
-    mut fields: Query<(
-        &mut Text,
-        Option<&CalendarEntryMassField>,
-        Option<&CalendarEntryTimeField>,
-        Option<&CalendarEntryUnitButton>,
-    )>,
+    mut fields: Query<&mut Text, With<CalendarEntryTimeField>>,
 ) {
     if form.open {
         for input in keyboard.read() {
@@ -997,83 +956,54 @@ pub fn edit_calendar_entry_fields(
                 continue;
             }
             match input.key_code {
-                KeyCode::Backspace => match form.focused {
-                    EntryFormField::Mass => {
-                        form.mass.pop();
-                    }
-                    EntryFormField::Time => {
+                KeyCode::Backspace => {
+                    if form.focused == EntryFormField::Time {
                         form.time.pop();
                     }
-                },
+                }
                 KeyCode::Tab => {
-                    form.focused = match form.focused {
-                        EntryFormField::Mass => EntryFormField::Time,
-                        EntryFormField::Time => EntryFormField::Mass,
-                    };
+                    form.focused = EntryFormField::Time;
                 }
                 _ => {
+                    if form.focused != EntryFormField::Time {
+                        continue;
+                    }
                     let Some(text) = input.text.as_deref() else {
                         continue;
                     };
-                    match form.focused {
-                        EntryFormField::Mass => {
-                            form.mass.extend(text.chars().filter(char::is_ascii_digit));
-                        }
-                        EntryFormField::Time => {
-                            form.time.extend(
-                                text.chars()
-                                    .filter(|character| character.is_ascii_digit() || *character == ':'),
-                            );
-                        }
-                    }
+                    form.time.extend(
+                        text.chars()
+                            .filter(|character| character.is_ascii_digit() || *character == ':'),
+                    );
                 }
             }
         }
     }
-    for (mut text, mass, time, unit) in &mut fields {
-        if mass.is_some() {
-            text.0 = format!("Mass: {}", form.mass);
-        } else if time.is_some() {
-            text.0 = format!("Time: {}", form.time);
-        } else if unit.is_some() {
-            text.0 = format!("Unit: {}", form.unit.database_value());
-        }
+    for mut text in &mut fields {
+        **text = format!("Time: {}", form.time);
     }
 }
 
 pub fn save_calendar_entry(
-    buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<CalendarEntrySaveButton>),
-    >,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<CalendarEntrySaveButton>)>,
     mut form: ResMut<CalendarEntryForm>,
     calendar: Res<CalendarState>,
     account: Res<AuthenticatedAccount>,
     database: Res<Database>,
     results: Res<CalendarEntrySaveResults>,
 ) {
-    if !form.open
-        || !buttons
-            .iter()
-            .any(|interaction| *interaction == Interaction::Pressed)
-    {
+    if !form.open || !buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
         return;
     }
-    let Some(mass) = form.mass.parse::<i32>().ok().filter(|mass| *mass > 0) else {
-        form.error = Some("Enter a mass greater than zero.".to_owned());
+    let Some(product_id) = form.product_id else {
+        form.error = Some("Select a product.".to_owned());
         return;
     };
     let Ok(time) = NaiveTime::parse_from_str(&form.time, "%H:%M") else {
         form.error = Some("Enter a time in HH:MM format.".to_owned());
         return;
     };
-    let Some(occurred_at) = calendar
-        .selected_date
-        .and_time(time)
-        .and_local_timezone(Local)
-        .earliest()
-        .map(SystemTime::from)
-    else {
+    let Some(occurred_at) = calendar.selected_date.and_time(time).and_local_timezone(Local).earliest().map(SystemTime::from) else {
         form.error = Some("That local time does not exist.".to_owned());
         return;
     };
@@ -1082,19 +1012,14 @@ pub fn save_calendar_entry(
     let new_entry = db::calendar::entry::model::NewEntryModel {
         acc_id,
         occurred_at,
-        mass,
-        units: form.unit.database_value().to_owned(),
+        product_id,
     };
     let pool = database.0.clone();
     let sender = results.sender.clone();
     form.error = None;
     thread::spawn(move || {
         let result = match Builder::new_current_thread().enable_all().build() {
-            Ok(runtime) => runtime
-                .block_on(db::calendar::entry::setters::insert_entry(
-                    &pool, new_entry,
-                ))
-                .map_err(|error| error.to_string()),
+            Ok(runtime) => runtime.block_on(db::calendar::entry::setters::insert_entry(&pool, new_entry)).map_err(|error| error.to_string()),
             Err(error) => Err(error.to_string()),
         };
         let _ = sender.send((acc_id, date, result));
@@ -1106,6 +1031,9 @@ pub fn apply_calendar_entry_save_results(
     account: Res<AuthenticatedAccount>,
     mut form: ResMut<CalendarEntryForm>,
     mut entries: ResMut<CalendarEntries>,
+    mut lists: Query<&mut Node, (With<CalendarEntryProductList>, Without<CalendarEntryModal>)>,
+    mut modals: Query<&mut Node, (With<CalendarEntryModal>, Without<CalendarEntryProductList>)>,
+    mut product_buttons: Query<&mut Text, With<CalendarEntryProductButton>>,
 ) {
     let receiver = match results.receiver.lock() {
         Ok(receiver) => receiver,
@@ -1119,10 +1047,20 @@ pub fn apply_calendar_entry_save_results(
             Ok((acc_id, _date, result)) if acc_id == account.id => match result {
                 Ok(_) => {
                     form.open = false;
-                    form.mass.clear();
+                    form.product_id = None;
+                    form.product_selector_open = false;
                     form.time = Local::now().format("%H:%M").to_string();
                     form.error = None;
                     entries.requested_date = None;
+                    for mut node in &mut modals {
+                        node.display = Display::None;
+                    }
+                    for mut node in &mut lists {
+                        node.display = Display::None;
+                    }
+                    for mut text in &mut product_buttons {
+                        **text = "Product: Select product".to_string();
+                    }
                 }
                 Err(error) => {
                     form.error = Some(error);
@@ -1142,4 +1080,145 @@ pub fn update_calendar_entry_error(
     for mut text in &mut texts {
         text.0 = error.to_owned();
     }
+}
+
+pub fn begin_calendar_product_load(database: Res<Database>, mut products: ResMut<CalendarProducts>, receiver: Res<CalendarProductLoadReceiver>) {
+    if products.loading || products.loaded {
+        return;
+    }
+    products.loading = true;
+    products.error = None;
+    let pool = database.0.clone();
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        products.loading = false;
+        products.error = Some("Could not initialize calendar product loading.".to_string());
+        return;
+    }
+    thread::spawn(move || {
+        let result = match Builder::new_current_thread().enable_all().build() {
+            Ok(runtime) => runtime.block_on(get_all_product_models(&pool)).map(|models| {
+                models.into_iter().map(|model| CalendarProductEntry {
+                    id: model.id,
+                    name: model.name,
+                }).collect::<Vec<_>>()
+            }).map_err(|error| format!("{error:?}")),
+            Err(error) => Err(error.to_string()),
+        };
+        let _ = sender.send(result);
+    });
+}
+
+pub fn poll_calendar_product_load(receiver: Res<CalendarProductLoadReceiver>, mut products: ResMut<CalendarProducts>) {
+    let result = {
+        let Ok(mut slot) = receiver.0.lock() else {
+            return;
+        };
+        let Some(result_receiver) = slot.as_ref() else {
+            return;
+        };
+        match result_receiver.try_recv() {
+            Ok(result) => {
+                *slot = None;
+                Some(result)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Calendar product loading worker disconnected.".to_string()))
+            }
+        }
+    };
+    let Some(result) = result else {
+        return;
+    };
+    products.loading = false;
+    match result {
+        Ok(loaded_products) => {
+            products.products = loaded_products;
+            products.loaded = true;
+            products.error = None;
+        }
+        Err(error) => {
+            products.error = Some(error);
+        }
+    }
+}
+
+pub fn update_calendar_product_options(
+    mut commands: Commands,
+    products: Res<CalendarProducts>,
+    lists: Query<(Entity, Option<&Children>), With<CalendarEntryProductList>>,
+    options: Query<Entity, With<CalendarEntryProductOption>>,
+) {
+    if !products.loaded {
+        return;
+    }
+    let Ok((list_entity, children)) = lists.single() else {
+        return;
+    };
+    if children.is_some_and(|children| !children.is_empty()) {
+        return;
+    }
+    for entity in &options {
+        commands.entity(entity).despawn();
+    }
+    for product in &products.products {
+        commands.spawn((
+            Button,
+            CalendarEntryProductOption(product.id),
+            ChildOf(list_entity),
+            Node {
+                width: px(340),
+                min_height: px(38),
+                padding: UiRect::horizontal(px(12)),
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.09, 0.11, 0.12)),
+            Text::new(product.name.clone()),
+            TextFont::from_font_size(14.0),
+            TextColor(Color::WHITE),
+        ));
+    }
+}
+
+pub fn select_calendar_product(
+    mut form: ResMut<CalendarEntryForm>,
+    products: Res<CalendarProducts>,
+    mut buttons: Query<(&mut Text, &mut BackgroundColor), With<CalendarEntryProductButton>>,
+    options: Query<(&Interaction, &CalendarEntryProductOption), Changed<Interaction>>,
+) {
+    for (interaction, option) in &options {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        let Some(product) = products.products.iter().find(|product| product.id == option.0) else {
+            continue;
+        };
+        form.product_id = Some(product.id);
+        form.product_selector_open = false;
+        form.error = None;
+        for (mut text, mut background) in &mut buttons {
+            **text = format!("Product: {}", product.name);
+            *background = BackgroundColor(Color::srgb(0.07, 0.09, 0.10));
+        }
+    }
+}
+
+pub fn toggle_calendar_product_selector(
+    mut form: ResMut<CalendarEntryForm>,
+    mut lists: Query<&mut Node, With<CalendarEntryProductList>>,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryProductButton>)>,
+) {
+    if !buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
+        return;
+    }
+    let Ok(mut node) = lists.single_mut() else {
+        return;
+    };
+    form.product_selector_open = !form.product_selector_open;
+    node.display = if form.product_selector_open { Display::Flex } else { Display::None };
 }

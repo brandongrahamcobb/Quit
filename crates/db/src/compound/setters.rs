@@ -21,7 +21,7 @@ use crate::error::DatabaseError;
 use crate::pool;
 use crate::pool::DbPool;
 use crate::schema::{compound_metabolites, compounds};
-use crate::compound::model::{NewCompoundModel, CompoundModel};
+use crate::compound::model::{CompoundModel, NewCompoundModel, UpdateCompoundModel};
 use diesel::expression_methods::*;
 use diesel::{Connection, QueryDsl, RunQueryDsl};
 
@@ -82,31 +82,22 @@ pub async fn set_compound_metabolites(
 pub async fn update_compound(
     pool: &DbPool,
     compound_id: i32,
-    common_name: String,
-    iupac_name: String,
-    half_life_seconds: Option<i64>,
-    image_path: Option<String>,
+    updated_compound: UpdateCompoundModel,
 ) -> Result<(), DatabaseError> {
     pool::spawn_db(pool, move |conn| {
-        diesel::update(
-            compounds::table
-                .filter(compounds::id.eq(compound_id)),
-        )
-        .set((
-            compounds::common_name.eq(common_name),
-            compounds::iupac_name.eq(iupac_name),
-            compounds::half_life_seconds.eq(half_life_seconds),
-            compounds::updated_at.eq(std::time::SystemTime::now()),
-            compounds::image_path.eq(image_path),
-        ))
-        .execute(conn)
-        .and_then(|rows| {
-            if rows == 0 {
-                Err(diesel::result::Error::NotFound)
-            } else {
-                Ok(())
-            }
-        })
+        diesel::update(compounds::table.filter(compounds::id.eq(compound_id)))
+            .set((
+                updated_compound,
+                compounds::updated_at.eq(std::time::SystemTime::now()),
+            ))
+            .execute(conn)
+            .and_then(|rows| {
+                if rows == 0 {
+                    Err(diesel::result::Error::NotFound)
+                } else {
+                    Ok(())
+                }
+            })
     })
     .await
 }

@@ -6,5 +6,5 @@ pub mod day;
 pub mod entry;
 pub mod login;
 pub mod onboarding;
+pub mod product;
 pub mod settings;
-pub mod substance;

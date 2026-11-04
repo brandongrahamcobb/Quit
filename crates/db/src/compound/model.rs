@@ -43,6 +43,16 @@ pub struct NewCompoundModel {
     pub image_path: Option<String>,
 }
 
+#[derive(AsChangeset)]
+#[diesel(table_name = compounds)]
+#[diesel(treat_none_as_null = true)]
+pub struct UpdateCompoundModel {
+    pub common_name: String,
+    pub iupac_name: String,
+    pub half_life_seconds: Option<i64>,
+    pub image_path: Option<String>,
+}
+
 impl CompoundModel {
     pub fn get_created_at(&self) -> Result<SystemTime, CompoundModelError> {
         if let Some(created_at) = self.created_at {

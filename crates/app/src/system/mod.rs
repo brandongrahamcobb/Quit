@@ -3,7 +3,7 @@ pub mod compound;
 pub mod dashboard;
 pub mod login;
 pub mod onboarding;
+pub mod product;
 pub mod startup;
 pub mod settings;
 pub mod settings_wallpaper;
-pub mod substance;

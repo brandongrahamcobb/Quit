@@ -18,7 +18,6 @@
  */
 
 use bevy::prelude::*;
-use db::compound::model::CompoundModel;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::Mutex;
 

@@ -1,5 +1,5 @@
-/* db/src/substance/getters.rs
- * The purpose of this module is to provide database getters for substances.
+/* db/src/product/getters.rs
+ * The purpose of this module is to provide database getters for products.
  *
  * Copyright (C) 2026  https://github.com/brandongrahamcobb/Quit.git
  *
@@ -19,31 +19,43 @@
 
 use crate::error::DatabaseError;
 use crate::pool::{self, DbPool};
-use crate::schema::substances;
-use crate::substance::model::SubstanceModel;
+use crate::schema::{products, product_compounds};
+use crate::product::model::{ProductCompoundModel, ProductModel};
 use diesel::expression_methods::*;
 use diesel::{QueryDsl, RunQueryDsl};
 
-pub async fn get_substance_model_by_id(
+pub async fn get_product_model_by_id(
     pool: &DbPool,
-    substance_id: i32,
-) -> Result<SubstanceModel, DatabaseError> {
+    product_id: i32,
+) -> Result<ProductModel, DatabaseError> {
     pool::spawn_db(pool, move |conn| {
-        substances::table
-            .filter(substances::id.eq(substance_id))
-            .first::<SubstanceModel>(conn)
+        products::table
+            .filter(products::id.eq(product_id))
+            .first::<ProductModel>(conn)
     })
     .await
 }
 
-pub async fn get_substance_models_by_acc_id(
+pub async fn get_all_product_models(
     pool: &DbPool,
-    acc_id: i32,
-) -> Result<Vec<SubstanceModel>, DatabaseError> {
+) -> Result<Vec<ProductModel>, DatabaseError> {
     pool::spawn_db(pool, move |conn| {
-        substances::table
-            .filter(substances::acc_id.eq(acc_id))
-            .get_results::<SubstanceModel>(conn)
+        products::table
+            .order(products::name.asc())
+            .get_results::<ProductModel>(conn)
+    })
+    .await
+}
+
+pub async fn get_product_compounds_by_id(
+    pool: &DbPool,
+    product_id: i32,
+) -> Result<Vec<ProductCompoundModel>, DatabaseError> {
+    pool::spawn_db(pool, move |conn| {
+        product_compounds::table
+            .filter(product_compounds::product_id.eq(product_id))
+            .order(product_compounds::compound_id.asc())
+            .get_results::<ProductCompoundModel>(conn)
     })
     .await
 }

@@ -142,38 +142,18 @@ impl Default for CalendarEntryLoadResults {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum EntryUnit {
-    #[default]
-    Grams,
-    Milligrams,
-    Micrograms,
-}
-
-impl EntryUnit {
-    pub const fn database_value(self) -> &'static str {
-        match self {
-            Self::Grams => "g",
-            Self::Milligrams => "mg",
-            Self::Micrograms => "ug",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum EntryFormField {
     #[default]
-    Mass,
+    Product,
     Time,
 }
 
 #[derive(Resource)]
 pub struct CalendarEntryForm {
     pub open: bool,
-    pub mass: String,
     pub time: String,
-    pub unit: EntryUnit,
-    pub substance_id: Option<i32>,
-    pub route_id: Option<i32>,
+    pub product_id: Option<i32>,
+    pub product_selector_open: bool,
     pub focused: EntryFormField,
     pub error: Option<String>,
 }
@@ -182,11 +162,9 @@ impl Default for CalendarEntryForm {
     fn default() -> Self {
         Self {
             open: false,
-            mass: String::new(),
             time: Local::now().format("%H:%M").to_string(),
-            unit: EntryUnit::default(),
-            substance_id: None,
-            route_id: None,
+            product_id: None,
+            product_selector_open: false,
             focused: EntryFormField::default(),
             error: None,
         }
@@ -211,3 +189,22 @@ impl Default for CalendarEntrySaveResults {
         }
     }
 }
+
+#[derive(Clone)]
+pub struct CalendarProductEntry {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Resource, Default)]
+pub struct CalendarProducts {
+    pub products: Vec<CalendarProductEntry>,
+    pub loaded: bool,
+    pub loading: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Resource, Default)]
+pub struct CalendarProductLoadReceiver(pub Mutex<Option<Receiver<CalendarProductLoadResult>>>);
+
+pub type CalendarProductLoadResult = Result<Vec<CalendarProductEntry>, String>;

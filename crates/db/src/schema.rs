@@ -71,49 +71,29 @@ diesel::table! {
         id -> Int4,
         acc_id -> Int4,
         occurred_at -> Timestamp,
-        mass -> Int4,
-        units -> Text,
-        substance_id -> Int4,
-        route_id -> Int4,
+        product_id -> Int4,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
     }
 }
 
 diesel::table! {
-    routes (id) {
-        id -> Int4,
-        acc_id -> Int4,
-        name -> Text,
-        created_at -> Nullable<Timestamp>,
-        updated_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    substance_compounds (substance_id, compound_id) {
-        substance_id -> Int4,
+    product_compounds (product_id, compound_id) {
+        product_id -> Int4,
         compound_id -> Int4,
         compound_amount -> Int8,
         compound_units -> Text,
-        substance_amount -> Int8,
-        substance_units -> Text,
     }
 }
 
 diesel::table! {
-    substance_routes (substance_id, route_id) {
-        substance_id -> Int4,
-        route_id -> Int4,
-    }
-}
-
-diesel::table! {
-    substances (id) {
+    products (id) {
         id -> Int4,
-        acc_id -> Int4,
         name -> Text,
-        kind -> Text,
+        route -> Text,
+        brand -> Nullable<Text>,
+        description -> Nullable<Text>,
+        image_path -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
     }
@@ -124,11 +104,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     compounds,
     compound_metabolites,
     entries,
-    routes,
     settings_wallpaper,
-    substance_compounds,
-    substance_routes,
-    substances,
+    product_compounds,
+    products,
 );
 
 

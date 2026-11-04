@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.18.1", default-features = false, features = ["bevy_winit", "debug", "default_font", "x11", "ui_bevy_render"] }
+base = { path = "../base" }
 db = { path = "../db" }
 inc = { path = "../inc" }
 tokio = { version = "1.51.1", features = ["rt-multi-thread"] }

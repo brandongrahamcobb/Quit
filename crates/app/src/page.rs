@@ -26,6 +26,6 @@ pub enum AppPage {
     Onboarding,
     Dashboard,
     Calendar,
-    Substance,
+    Products,
     Compounds
 }

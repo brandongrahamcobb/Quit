@@ -19,8 +19,8 @@
 use bevy::prelude::*;
 
 use crate::page::AppPage;
-use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarState};
-use crate::system::calendar::{apply_calendar_entry_results, apply_calendar_entry_save_results, cleanup_calendar_navigation, cycle_calendar_entry_unit, edit_calendar_entry_fields, focus_calendar_entry_field, handle_calendar_navigation, refresh_calendar_page, request_calendar_entries, save_calendar_entry, select_calendar_date, select_calendar_view, spawn_calendar_navigation, toggle_calendar_entry_form, update_calendar_entries_text, update_calendar_entry_error};
+use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarState};
+use crate::system::calendar::{apply_calendar_entry_results, apply_calendar_entry_save_results, begin_calendar_product_load, cleanup_calendar_navigation, edit_calendar_entry_fields, focus_calendar_entry_field, handle_calendar_navigation, open_calendar, poll_calendar_product_load, refresh_calendar_page, request_calendar_entries, save_calendar_entry, select_calendar_date, select_calendar_product, select_calendar_view, spawn_calendar_navigation, toggle_calendar_entry_form, toggle_calendar_product_selector, update_calendar_entries_text, update_calendar_entry_error, update_calendar_product_options};
 
 pub struct CalendarPlugin;
 
@@ -32,9 +32,14 @@ impl Plugin for CalendarPlugin {
             .init_resource::<CalendarEntryLoadResults>()
             .init_resource::<CalendarEntryForm>()
             .init_resource::<CalendarEntrySaveResults>()
+            .init_resource::<CalendarProducts>()
+            .init_resource::<CalendarProductLoadReceiver>()
+            .add_systems(Update, open_calendar)
             .add_systems(
                 Update,
                 (
+                    begin_calendar_product_load,
+                    poll_calendar_product_load,
                     handle_calendar_navigation,
                     select_calendar_view,
                     select_calendar_date,
@@ -42,20 +47,22 @@ impl Plugin for CalendarPlugin {
                     apply_calendar_entry_results,
                     refresh_calendar_page,
                     toggle_calendar_entry_form,
+                    update_calendar_product_options,
+                    toggle_calendar_product_selector,
+                    select_calendar_product,
                     focus_calendar_entry_field,
-                    cycle_calendar_entry_unit,
                     edit_calendar_entry_fields,
                     save_calendar_entry,
                     apply_calendar_entry_save_results,
                     update_calendar_entry_error,
                     update_calendar_entries_text,
-               ).chain().run_if(in_state(AppPage::Calendar))
+                )
+                .chain()
+                    .run_if(in_state(AppPage::Calendar)),
             )
             .add_systems(
                 OnEnter(AppPage::Calendar),
-                (
-                    spawn_calendar_navigation
-                ).chain()
+                spawn_calendar_navigation,
             )
             .add_systems(OnExit(AppPage::Calendar), cleanup_calendar_navigation);
     }
