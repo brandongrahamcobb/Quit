@@ -18,6 +18,7 @@
  */
 
 use bevy::prelude::*;
+use bigdecimal::BigDecimal;
 use db::product::model::ProductCompoundModel;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::Mutex;
@@ -52,6 +53,10 @@ pub struct ProductPageState {
     pub composition_loading: bool,
     pub composition_load_requested_id: Option<i32>,
     pub composition_load_generation: u64,
+    pub serving_size: String,
+    pub serving_unit: String,
+    pub serving_description: String,
+    pub serving_unit_selector_open: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +67,9 @@ pub struct ProductEntry {
     pub brand: Option<String>,
     pub description: Option<String>,
     pub image_path: Option<String>,
+    pub serving_size: BigDecimal,
+    pub serving_unit: String,
+    pub serving_description: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -80,6 +88,9 @@ pub enum ProductFormField {
     Description,
     Search,
     CompoundAmount(i32),
+    ServingSize,
+    ServingUnit,
+    ServingDescription,
 }
 
 #[derive(Resource, Default)]

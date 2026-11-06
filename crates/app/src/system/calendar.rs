@@ -21,10 +21,11 @@
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bigdecimal::BigDecimal;
 use chrono::{Datelike, Days, Local, NaiveTime, Timelike};
 use db::product::getters::get_all_product_models;
 use crate::component::calendar::{
-    CalendarBackButton, CalendarDateCell, CalendarDayViewButton, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekViewButton, OpenCalendarButton,
+    CalendarBackButton, CalendarDateCell, CalendarDayViewButton, CalendarEntryAmountField, CalendarEntryAmountUnitButton, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekViewButton, OpenCalendarButton,
 };
 use crate::component::entry::{CalendarAddEntryButton, CalendarEntriesText, CalendarEntryCloseButton, CalendarEntryErrorText, CalendarEntryModal, CalendarEntryProductButton, CalendarEntryProductList, CalendarEntryProductOption, CalendarEntrySaveButton, CalendarEntryTimeField};
 use crate::resource::calendar_resource::{
@@ -354,6 +355,36 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarS
                             },
                             BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
                             CalendarEntryProductList,
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntryAmountField,
+                            Node {
+                                width: px(340),
+                                height: px(42),
+                                padding: UiRect::horizontal(px(12)),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            Text::new("Amount: 1"),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
+                        ));
+                        modal.spawn((
+                            Button,
+                            CalendarEntryAmountUnitButton,
+                            Node {
+                                width: px(340),
+                                height: px(42),
+                                padding: UiRect::horizontal(px(12)),
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                            Text::new("Unit: unit"),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
                         ));
                         modal.spawn((
                             Button,
@@ -732,7 +763,6 @@ fn spawn_calendar_week_timeline(
                                 },
                                 BackgroundColor(Color::srgb(0.11, 0.14, 0.16)),
                             ));
-
                             if day == today && hour == current_hour {
                                 day_column.with_child((
                                     Node {
@@ -929,14 +959,17 @@ pub fn toggle_calendar_entry_form(
 }
 
 pub fn focus_calendar_entry_field(
-    mut fields: Query<
-        &Interaction,
-        (Changed<Interaction>, With<CalendarEntryTimeField>),
-    >,
+    mut amount_fields: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryAmountField>)>,
+    mut fields: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryTimeField>)>,
     mut form: ResMut<CalendarEntryForm>,
 ) {
     if !form.open {
         return;
+    }
+    for interaction in &mut amount_fields {
+        if *interaction == Interaction::Pressed {
+            form.focused = EntryFormField::Amount;
+        }
     }
     for interaction in &mut fields {
         if *interaction == Interaction::Pressed {
@@ -946,9 +979,11 @@ pub fn focus_calendar_entry_field(
 }
 
 pub fn edit_calendar_entry_fields(
+    mut amount_fields: Query<&mut Text, With<CalendarEntryAmountField>>,
+    mut amount_unit_buttons: Query<&mut Text, (With<CalendarEntryAmountUnitButton>, Without<CalendarEntryAmountField>)>,
     mut keyboard: MessageReader<KeyboardInput>,
     mut form: ResMut<CalendarEntryForm>,
-    mut fields: Query<&mut Text, With<CalendarEntryTimeField>>,
+    mut time_fields: Query<&mut Text, (With<CalendarEntryTimeField>, Without<CalendarEntryAmountField>, Without<CalendarEntryAmountUnitButton>)>,
 ) {
     if form.open {
         for input in keyboard.read() {
@@ -957,29 +992,42 @@ pub fn edit_calendar_entry_fields(
             }
             match input.key_code {
                 KeyCode::Backspace => {
-                    if form.focused == EntryFormField::Time {
-                        form.time.pop();
+                    match form.focused {
+                        EntryFormField::Amount => { form.amount.pop(); }
+                        EntryFormField::Time => { form.time.pop(); }
+                        EntryFormField::Product => {}
                     }
                 }
                 KeyCode::Tab => {
-                    form.focused = EntryFormField::Time;
+                    form.focused = match form.focused {
+                        EntryFormField::Amount => EntryFormField::Time,
+                        _ => EntryFormField::Amount,
+                    };
                 }
                 _ => {
-                    if form.focused != EntryFormField::Time {
-                        continue;
-                    }
                     let Some(text) = input.text.as_deref() else {
                         continue;
                     };
-                    form.time.extend(
-                        text.chars()
-                            .filter(|character| character.is_ascii_digit() || *character == ':'),
-                    );
+                    match form.focused {
+                        EntryFormField::Amount => {
+                            form.amount.extend(text.chars().filter(|character| character.is_ascii_digit() || *character == '.'));
+                        }
+                        EntryFormField::Time => {
+                            form.time.extend(text.chars().filter(|character| character.is_ascii_digit() || *character == ':'));
+                        }
+                        EntryFormField::Product => {}
+                    }
                 }
             }
         }
     }
-    for mut text in &mut fields {
+    for mut text in &mut amount_fields {
+        **text = format!("Amount: {}", form.amount);
+    }
+    for mut text in &mut amount_unit_buttons {
+        **text = format!("Unit: {}", form.amount_unit);
+    }
+    for mut text in &mut time_fields {
         **text = format!("Time: {}", form.time);
     }
 }
@@ -999,6 +1047,18 @@ pub fn save_calendar_entry(
         form.error = Some("Select a product.".to_owned());
         return;
     };
+    let Ok(amount) = form.amount.trim().parse::<BigDecimal>() else {
+        form.error = Some("Enter a valid amount.".to_owned());
+        return;
+    };
+    if amount <= BigDecimal::from(0) {
+        form.error = Some("Amount must be greater than zero.".to_owned());
+        return;
+    }
+    if !["mg", "mL", "unit"].contains(&form.amount_unit.as_str()) {
+        form.error = Some("Select a valid amount unit.".to_owned());
+        return;
+    }
     let Ok(time) = NaiveTime::parse_from_str(&form.time, "%H:%M") else {
         form.error = Some("Enter a time in HH:MM format.".to_owned());
         return;
@@ -1013,6 +1073,8 @@ pub fn save_calendar_entry(
         acc_id,
         occurred_at,
         product_id,
+        amount,
+        amount_unit: form.amount_unit.clone(),
     };
     let pool = database.0.clone();
     let sender = results.sender.clone();
@@ -1050,6 +1112,8 @@ pub fn apply_calendar_entry_save_results(
                     form.product_id = None;
                     form.product_selector_open = false;
                     form.time = Local::now().format("%H:%M").to_string();
+                    form.amount = "1".to_string();
+                    form.amount_unit = "unit".to_string();
                     form.error = None;
                     entries.requested_date = None;
                     for mut node in &mut modals {
@@ -1103,6 +1167,8 @@ pub fn begin_calendar_product_load(database: Res<Database>, mut products: ResMut
                 models.into_iter().map(|model| CalendarProductEntry {
                     id: model.id,
                     name: model.name,
+                    serving_size: model.serving_size,
+                    serving_unit: model.serving_unit,
                 }).collect::<Vec<_>>()
             }).map_err(|error| format!("{error:?}")),
             Err(error) => Err(error.to_string()),
@@ -1198,6 +1264,8 @@ pub fn select_calendar_product(
         let Some(product) = products.products.iter().find(|product| product.id == option.0) else {
             continue;
         };
+        form.amount = product.serving_size.to_string();
+        form.amount_unit = product.serving_unit.clone();
         form.product_id = Some(product.id);
         form.product_selector_open = false;
         form.error = None;
@@ -1207,6 +1275,7 @@ pub fn select_calendar_product(
         }
     }
 }
+
 
 pub fn toggle_calendar_product_selector(
     mut form: ResMut<CalendarEntryForm>,

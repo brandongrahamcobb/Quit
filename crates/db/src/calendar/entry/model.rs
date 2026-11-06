@@ -18,25 +18,42 @@
  */
 
 use crate::calendar::entry::error::EntryModelError;
-use crate::schema::entries;
+use crate::schema::{entries, entry_compounds};
+use bigdecimal::BigDecimal;
 use diesel::prelude::*;
+use diesel;
 use std::time::SystemTime;
 
 #[derive(Clone, Queryable)]
 #[diesel(table_name = entries)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct EntryModel {
     pub id: i32,
     pub acc_id: i32,
     pub occurred_at: SystemTime,
     pub product_id: i32,
+    pub amount: BigDecimal,
+    pub amount_unit: String,
     pub created_at: Option<SystemTime>,
     pub updated_at: SystemTime,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = entries)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewEntryModel {
     pub acc_id: i32,
     pub occurred_at: SystemTime,
     pub product_id: i32,
+    pub amount: BigDecimal,
+    pub amount_unit: String,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = entry_compounds)]
+pub struct NewEntryCompoundModel {
+    pub entry_id: i32,
+    pub compound_id: i32,
+    pub compound_amount: BigDecimal,
+    pub compound_units: String,
 }

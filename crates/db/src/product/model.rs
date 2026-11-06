@@ -19,6 +19,7 @@
 
 use crate::product::error::ProductModelError;
 use crate::schema::{products, product_compounds};
+use bigdecimal::BigDecimal;
 use diesel::prelude::*;
 use std::time::SystemTime;
 
@@ -31,6 +32,9 @@ pub struct ProductModel {
     pub brand: Option<String>,
     pub description: Option<String>,
     pub image_path: Option<String>,
+    pub serving_size: BigDecimal,
+    pub serving_unit: String,
+    pub serving_description: Option<String>,
     pub created_at: Option<SystemTime>,
     pub updated_at: SystemTime,
 }
@@ -53,6 +57,9 @@ pub struct NewProductModel {
     pub brand: Option<String>,
     pub description: Option<String>,
     pub image_path: Option<String>,
+    pub serving_size: BigDecimal,
+    pub serving_unit: String,
+    pub serving_description: Option<String>,
 }
 
 #[derive(AsChangeset)]
@@ -64,6 +71,9 @@ pub struct UpdateProductModel {
     pub brand: Option<String>,
     pub description: Option<String>,
     pub image_path: Option<String>,
+    pub serving_size: BigDecimal,
+    pub serving_unit: String,
+    pub serving_description: Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable)]
@@ -72,7 +82,7 @@ pub struct UpdateProductModel {
 pub struct ProductCompoundModel {
     pub product_id: i32,
     pub compound_id: i32,
-    pub compound_amount: i64,
+    pub compound_amount: BigDecimal,
     pub compound_units: String,
 }
 
@@ -81,14 +91,14 @@ pub struct ProductCompoundModel {
 pub struct NewProductCompoundModel {
     pub product_id: i32,
     pub compound_id: i32,
-    pub compound_amount: i64,
+    pub compound_amount: BigDecimal,
     pub compound_units: String,
 }
 
 #[derive(Clone)]
 pub struct ProductCompoundInput {
     pub compound_id: i32,
-    pub compound_amount: i64,
+    pub compound_amount: BigDecimal,
     pub compound_units: String,
 }
 

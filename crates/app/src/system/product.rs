@@ -22,11 +22,12 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use base;
+use bigdecimal::BigDecimal;
 use db::compound::getters::get_all_compound_models;
 use db::product::getters::{get_all_product_models, get_product_compounds_by_id};
 use db::product::model::{NewProductModel, ProductCompoundInput, UpdateProductModel};
 use db::product::setters::{delete_product, insert_product_with_compounds, update_product_with_compounds};
-use crate::component::product::{OpenProductsButton, ProductAddButton, ProductBrandButton, ProductBrandText, ProductCancelButton, ProductCompositionAmountButton, ProductCompositionAmountText, ProductCompositionItem, ProductCompositionListContainer, ProductCompositionRemoveButton, ProductCompositionUnitButton, ProductCompoundChoiceText, ProductCompoundListContainer, ProductCompoundToggleButton, ProductDashboardButton, ProductDeleteButton, ProductDeleteCancelButton, ProductDeleteConfirmButton, ProductDeleteDialog, ProductDeleteErrorText, ProductDeleteNameText, ProductDescriptionButton, ProductDescriptionText, ProductEditButton, ProductErrorText, ProductFormOverlay, ProductFormRoot, ProductImagePreview, ProductImagePreviewHandle, ProductImageRemoveButton, ProductImageUploadButton, ProductListContainer, ProductListItem, ProductListText, ProductNameButton, ProductNameText, ProductNavigationRoot, ProductPreviewButton, ProductPreviewImage, ProductRouteButton, ProductRouteOptionButton, ProductRouteOptionList, ProductRouteText, ProductSaveButton, ProductSaveButtonText, ProductSearchButton, ProductSearchText};
+use crate::component::product::{OpenProductsButton, ProductAddButton, ProductBrandButton, ProductBrandText, ProductCancelButton, ProductCompositionAmountButton, ProductCompositionAmountText, ProductCompositionItem, ProductCompositionListContainer, ProductCompositionRemoveButton, ProductCompositionUnitButton, ProductCompoundChoiceText, ProductCompoundListContainer, ProductCompoundToggleButton, ProductDashboardButton, ProductDeleteButton, ProductDeleteCancelButton, ProductDeleteConfirmButton, ProductDeleteDialog, ProductDeleteErrorText, ProductDeleteNameText, ProductDescriptionButton, ProductDescriptionText, ProductEditButton, ProductErrorText, ProductFormOverlay, ProductFormRoot, ProductImagePreview, ProductImagePreviewHandle, ProductImageRemoveButton, ProductImageUploadButton, ProductListContainer, ProductListItem, ProductListText, ProductNameButton, ProductNameText, ProductNavigationRoot, ProductPreviewButton, ProductPreviewImage, ProductRouteButton, ProductRouteOptionButton, ProductRouteOptionList, ProductRouteText, ProductSaveButton, ProductSaveButtonText, ProductSearchButton, ProductSearchText, ProductServingDescriptionButton, ProductServingDescriptionText, ProductServingSizeButton, ProductServingSizeText, ProductServingUnitButton, ProductServingUnitOptionButton, ProductServingUnitOptionList, ProductServingUnitText};
 use crate::page::AppPage;
 use crate::resource::compound_resource::CompoundEntry;
 use crate::resource::custom_resource::Database;
@@ -75,6 +76,9 @@ pub fn begin_product_load(database: Res<Database>, mut state: ResMut<ProductPage
                             brand: model.brand,
                             description: model.description,
                             image_path: model.image_path,
+                            serving_size: model.serving_size,
+                            serving_unit: model.serving_unit,
+                            serving_description: model.serving_description,
                         })
                         .collect::<Vec<_>>()
                 })
@@ -211,6 +215,7 @@ pub fn handle_product_form_buttons(
         state.composition_load_generation = state.composition_load_generation.wrapping_add(1);
         state.composition_loading = false;
         state.composition_load_requested_id = None;
+        state.serving_unit_selector_open = false;
         overlay.display = Display::None;
         state.error = None;
         return;
@@ -226,6 +231,10 @@ pub fn handle_product_form_buttons(
         state.description.clear();
         state.selected_compounds.clear();
         state.image_path = None;
+        state.serving_size = "1".to_string();
+        state.serving_unit = "unit".to_string();
+        state.serving_description.clear();
+        state.serving_unit_selector_open = false;
         state.focused_field = Some(ProductFormField::Name);
         state.error = None;
         overlay.display = Display::Flex;
@@ -246,6 +255,10 @@ pub fn handle_product_form_buttons(
             state.description = product.description.unwrap_or_default();
             state.selected_compounds.clear();
             state.image_path = product.image_path;
+            state.serving_unit_selector_open = false;
+            state.serving_size = product.serving_size.to_string();
+            state.serving_unit = product.serving_unit.clone();
+            state.serving_description = product.serving_description.clone().unwrap_or_default();
             state.focused_field = Some(ProductFormField::Name);
             state.error = None;
             overlay.display = Display::Flex;
@@ -254,6 +267,10 @@ pub fn handle_product_form_buttons(
 }
 
 pub fn focus_product_fields(
+    serving_unit_buttons: Query<&Interaction, (Changed<Interaction>, With<ProductServingUnitButton>)>,
+    serving_unit_option_buttons: Query<(&Interaction, &ProductServingUnitOptionButton), Changed<Interaction>>,
+    serving_description_buttons: Query<&Interaction, (Changed<Interaction>, With<ProductServingDescriptionButton>)>,
+    serving_size_buttons: Query<&Interaction, (Changed<Interaction>, With<ProductServingSizeButton>)>,
     amount_buttons: Query<(&Interaction, &ProductCompositionAmountButton), Changed<Interaction>>,
     brand_buttons: Query<&Interaction, (Changed<Interaction>, With<ProductBrandButton>)>,
     description_buttons: Query<&Interaction, (Changed<Interaction>, With<ProductDescriptionButton>)>,
@@ -269,6 +286,25 @@ pub fn focus_product_fields(
     }
     if description_buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
         state.focused_field = Some(ProductFormField::Description);
+        state.caret_started_at = time.elapsed_secs_f64();
+    }
+    if serving_unit_buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
+        state.serving_unit_selector_open = !state.serving_unit_selector_open;
+        state.focused_field = None;
+    }
+    for (interaction, option) in &serving_unit_option_buttons {
+        if *interaction == Interaction::Pressed {
+            state.serving_unit = option.0.clone();
+            state.serving_unit_selector_open = false;
+            state.focused_field = None;
+        }
+    }
+    if serving_description_buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
+        state.focused_field = Some(ProductFormField::ServingDescription);
+        state.caret_started_at = time.elapsed_secs_f64();
+    }
+    if serving_size_buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
+        state.focused_field = Some(ProductFormField::ServingSize);
         state.caret_started_at = time.elapsed_secs_f64();
     }
     if name_buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
@@ -319,6 +355,9 @@ pub fn edit_product_fields(
                             compound.compound_amount.pop();
                         }
                     }
+                    ProductFormField::ServingDescription => { state.serving_description.pop(); }
+                    ProductFormField::ServingSize => { state.serving_size.pop(); }
+                    ProductFormField::ServingUnit => {}
                 }
                 state.caret_started_at = time.elapsed_secs_f64();
             }
@@ -345,6 +384,13 @@ pub fn edit_product_fields(
                             compound.compound_amount.extend(text.chars().filter(|c| c.is_ascii_digit()));
                         }
                     }
+                    ProductFormField::ServingDescription => {
+                        state.serving_description.extend(text.chars().filter(|c| !c.is_control()));
+                    }
+                    ProductFormField::ServingSize => {
+                        state.serving_size.extend(text.chars().filter(|c| c.is_ascii_digit() || *c == '.'));
+                    }
+                    ProductFormField::ServingUnit => {}
                 }
                 state.caret_started_at = time.elapsed_secs_f64();
             }
@@ -884,6 +930,51 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                     Button,
                     Node { width: percent(100), min_height: px(40), padding: UiRect::all(px(8)), ..default() },
                     BackgroundColor(Color::srgb(0.18, 0.20, 0.23)),
+                    ProductServingSizeButton,
+                )).with_children(|button| {
+                    button.spawn((Text::new("Serving size: "), ProductServingSizeText));
+                });
+                form.spawn((
+                    Button,
+                    Node { width: percent(100), min_height: px(40), padding: UiRect::all(px(8)), ..default() },
+                    BackgroundColor(Color::srgb(0.18, 0.20, 0.23)),
+                    ProductServingUnitButton,
+                )).with_children(|button| {
+                    button.spawn((Text::new("Serving unit: "), ProductServingUnitText));
+                });
+                form.spawn((
+                    Node {
+                        width: percent(100),
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(4),
+                        display: Display::None,
+                        ..default()
+                    },
+                    ProductServingUnitOptionList,
+                )).with_children(|units| {
+                    for unit in ["mg", "mL", "unit"] {
+                        units.spawn((
+                            Button,
+                            Node { width: percent(100), padding: UiRect::all(px(8)), ..default() },
+                            BackgroundColor(Color::srgb(0.20, 0.22, 0.25)),
+                            ProductServingUnitOptionButton(unit.to_string()),
+                        )).with_children(|button| {
+                            button.spawn(Text::new(unit));
+                        });
+                    }
+                });
+                form.spawn((
+                    Button,
+                    Node { width: percent(100), min_height: px(40), padding: UiRect::all(px(8)), ..default() },
+                    BackgroundColor(Color::srgb(0.18, 0.20, 0.23)),
+                    ProductServingDescriptionButton,
+                )).with_children(|button| {
+                    button.spawn((Text::new("Serving description: "), ProductServingDescriptionText));
+                });
+                form.spawn((
+                    Button,
+                    Node { width: percent(100), min_height: px(40), padding: UiRect::all(px(8)), ..default() },
+                    BackgroundColor(Color::srgb(0.18, 0.20, 0.23)),
                     ProductDescriptionButton,
                 )).with_children(|button| {
                     button.spawn((Text::new("Description: "), ProductDescriptionText));
@@ -1005,6 +1096,15 @@ pub fn update_product_route_options(
     }
 }
 
+pub fn update_product_serving_unit_options(
+    state: Res<ProductPageState>,
+    mut serving_unit_lists: Query<&mut Node, With<ProductServingUnitOptionList>>,
+) {
+    for mut node in &mut serving_unit_lists {
+        node.display = if state.serving_unit_selector_open { Display::Flex } else { Display::None };
+    }
+}
+
 pub fn cycle_product_compound_units(
     mut buttons: Query<(&Interaction, &ProductCompositionUnitButton), Changed<Interaction>>,
     mut state: ResMut<ProductPageState>,
@@ -1013,9 +1113,8 @@ pub fn cycle_product_compound_units(
         if *interaction == Interaction::Pressed {
             if let Some(compound) = state.selected_compounds.iter_mut().find(|compound| compound.compound_id == button.0) {
                 compound.compound_units = match compound.compound_units.as_str() {
-                    "g" => "mg".to_string(),
-                    "mg" => "ug".to_string(),
-                    _ => "g".to_string(),
+                    "mg" => "mL".to_string(),
+                    _ => "mg".to_string(),
                 };
             }
         }
@@ -1052,17 +1151,29 @@ pub fn save_product(
         state.error = Some("Select a valid route.".to_string());
         return;
     }
+    let Ok(serving_size) = state.serving_size.trim().parse::<BigDecimal>() else {
+        state.error = Some("Enter a valid serving size.".to_string());
+        return;
+    };
+    if serving_size <= BigDecimal::from(0) {
+        state.error = Some("Serving size must be greater than zero.".to_string());
+        return;
+    }
+    if !["mg", "mL", "unit"].contains(&state.serving_unit.as_str()) {
+        state.error = Some("Select a valid serving unit.".to_string());
+        return;
+    }
     let mut compounds = Vec::new();
     for compound in &state.selected_compounds {
-        let Ok(amount) = compound.compound_amount.parse::<i64>() else {
+        let Ok(amount) = compound.compound_amount.parse::<BigDecimal>() else {
             state.error = Some(format!("Enter a valid amount for {}.", compound.compound_name));
             return;
         };
-        if amount <= 0 {
+        if amount <= BigDecimal::from(0) {
             state.error = Some(format!("Amount for {} must be greater than zero.", compound.compound_name));
             return;
         }
-        if !["g", "mg", "ug"].contains(&compound.compound_units.as_str()) {
+        if !["mg", "mL"].contains(&compound.compound_units.as_str()) {
             state.error = Some(format!("Select a valid unit for {}.", compound.compound_name));
             return;
         }
@@ -1084,6 +1195,12 @@ pub fn save_product(
             (!description.is_empty()).then(|| description.to_string())
         },
         image_path: state.image_path.clone(),
+        serving_size,
+        serving_unit: state.serving_unit.clone(),
+        serving_description: {
+            let description = state.serving_description.trim();
+            (!description.is_empty()).then(|| description.to_string())
+        },
     };
     let editing_id = state.editing_id;
     let updated_product = UpdateProductModel {
@@ -1092,6 +1209,9 @@ pub fn save_product(
         brand: new_product.brand.clone(),
         description: new_product.description.clone(),
         image_path: new_product.image_path.clone(),
+        serving_size: new_product.serving_size.clone(),
+        serving_unit: new_product.serving_unit.clone(),
+        serving_description: new_product.serving_description.clone(),
     };
     let pool = database.0.clone();
     let sender = results.sender.clone();
@@ -1113,6 +1233,9 @@ pub fn save_product(
                         brand: product.brand,
                         description: product.description,
                         image_path: product.image_path,
+                        serving_size: product.serving_size,
+                        serving_unit: product.serving_unit,
+                        serving_description: product.serving_description,
                     }).collect()
                 }),
                 Err(error) => Err(error),
@@ -1244,6 +1367,9 @@ pub fn update_product_form_text(
     mut route_text: Query<&mut Text, (With<ProductRouteText>, Without<ProductBrandText>, Without<ProductDescriptionText>, Without<ProductNameText>, Without<ProductSearchText>, Without<ProductErrorText>, Without<ProductCompositionAmountText>)>,
     mut search_text: Query<&mut Text, (With<ProductSearchText>, Without<ProductBrandText>, Without<ProductDescriptionText>, Without<ProductNameText>, Without<ProductRouteText>, Without<ProductErrorText>, Without<ProductCompositionAmountText>)>,
     mut composition_amount_text: Query<(&mut Text, &ProductCompositionAmountText)>,
+    mut serving_description_text: Query<&mut Text, (With<ProductServingDescriptionText>, Without<ProductBrandText>, Without<ProductDescriptionText>, Without<ProductNameText>, Without<ProductRouteText>, Without<ProductSearchText>, Without<ProductErrorText>, Without<ProductCompositionAmountText>)>,
+    mut serving_size_text: Query<&mut Text, (With<ProductServingSizeText>, Without<ProductBrandText>, Without<ProductDescriptionText>, Without<ProductNameText>, Without<ProductRouteText>, Without<ProductSearchText>, Without<ProductErrorText>, Without<ProductCompositionAmountText>, Without<ProductServingDescriptionText>, Without<ProductServingUnitText>)>,
+    mut serving_unit_text: Query<&mut Text, (With<ProductServingUnitText>, Without<ProductBrandText>, Without<ProductDescriptionText>, Without<ProductNameText>, Without<ProductRouteText>, Without<ProductSearchText>, Without<ProductErrorText>, Without<ProductCompositionAmountText>, Without<ProductServingDescriptionText>, Without<ProductServingSizeText>)>,
 ) {
     let blink_on = (time.elapsed_secs_f64() - state.caret_started_at) % 1.0 < 0.5;
     for mut text in &mut brand_text {
@@ -1255,6 +1381,19 @@ pub fn update_product_form_text(
         let active = state.focused_field == Some(ProductFormField::Description);
         let value = if state.description.is_empty() && !active { "".to_owned() } else { state.description.clone() };
         **text = format!("Description: {}{}", value, if active && blink_on { "|" } else { "" });
+    }
+    for mut text in &mut serving_description_text {
+        let active = state.focused_field == Some(ProductFormField::ServingDescription);
+        let value = if state.serving_description.is_empty() && !active { "".to_owned() } else { state.serving_description.clone() };
+        **text = format!("Serving description: {}{}", value, if active && blink_on { "|" } else { "" });
+    }
+    for mut text in &mut serving_size_text {
+        let active = state.focused_field == Some(ProductFormField::ServingSize);
+        let value = if state.serving_size.is_empty() && !active { "".to_owned() } else { state.serving_size.clone() };
+        **text = format!("Serving size: {}{}", value, if active && blink_on { "|" } else { "" });
+    }
+    for mut text in &mut serving_unit_text {
+        **text = format!("Serving unit: {}", state.serving_unit);
     }
     for mut text in &mut name_text {
         let active = state.focused_field == Some(ProductFormField::Name);

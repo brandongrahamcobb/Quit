@@ -118,7 +118,7 @@ fn replace_product_compounds(
     let mut unique_ids: Vec<i32> = compounds.iter().map(|compound| compound.compound_id).collect();
     unique_ids.sort_unstable();
     unique_ids.dedup();
-    if unique_ids.len() != compounds.len() || compounds.iter().any(|compound| compound.compound_amount <= 0 || !["g", "mg", "ug"].contains(&compound.compound_units.as_str())) {
+    if unique_ids.len() != compounds.len() || compounds.iter().any(|compound| compound.compound_amount <= 0 || !["mg", "mL"].contains(&compound.compound_units.as_str())) {
         return Err(diesel::result::Error::RollbackTransaction);
     }
     diesel::delete(product_compounds::table.filter(product_compounds::product_id.eq(product_id))).execute(conn)?;

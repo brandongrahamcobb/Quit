@@ -20,6 +20,7 @@
 use std::sync::{Mutex, mpsc::{Receiver, Sender, channel}};
 
 use bevy::prelude::*;
+use bigdecimal::BigDecimal;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use db::calendar::entry::model::EntryModel;
 
@@ -146,6 +147,7 @@ pub enum EntryFormField {
     #[default]
     Product,
     Time,
+    Amount,
 }
 
 #[derive(Resource)]
@@ -154,6 +156,8 @@ pub struct CalendarEntryForm {
     pub time: String,
     pub product_id: Option<i32>,
     pub product_selector_open: bool,
+    pub amount: String,
+    pub amount_unit: String,
     pub focused: EntryFormField,
     pub error: Option<String>,
 }
@@ -165,6 +169,8 @@ impl Default for CalendarEntryForm {
             time: Local::now().format("%H:%M").to_string(),
             product_id: None,
             product_selector_open: false,
+            amount: "1".to_string(),
+            amount_unit: "unit".to_string(),
             focused: EntryFormField::default(),
             error: None,
         }
@@ -194,6 +200,8 @@ impl Default for CalendarEntrySaveResults {
 pub struct CalendarProductEntry {
     pub id: i32,
     pub name: String,
+    pub serving_size: BigDecimal,
+    pub serving_unit: String,
 }
 
 #[derive(Resource, Default)]

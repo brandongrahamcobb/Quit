@@ -15,3 +15,4 @@ tracing = "0.1.44"
 dotenvy = "0.15"
 chrono = { version = "0.4", features = ["clock"] }
 rfd = "0.15"
+bigdecimal = "0.4.11"

@@ -56,4 +56,9 @@ pub struct CalendarDateCell {
     pub in_visible_month: bool,
 }
 
+#[derive(Component)]
+pub struct CalendarEntryAmountField;
+
+#[derive(Component)]
+pub struct CalendarEntryAmountUnitButton;
 

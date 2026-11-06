@@ -72,6 +72,8 @@ diesel::table! {
         acc_id -> Int4,
         occurred_at -> Timestamp,
         product_id -> Int4,
+        amount -> Numeric,
+        amount_unit -> Text,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
     }
@@ -81,7 +83,7 @@ diesel::table! {
     product_compounds (product_id, compound_id) {
         product_id -> Int4,
         compound_id -> Int4,
-        compound_amount -> Int8,
+        compound_amount -> Numeric,
         compound_units -> Text,
     }
 }
@@ -94,8 +96,20 @@ diesel::table! {
         brand -> Nullable<Text>,
         description -> Nullable<Text>,
         image_path -> Nullable<Text>,
+        serving_size -> Numeric,
+        serving_unit -> Text,
+        serving_description -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    entry_compounds (entry_id, compound_id) {
+        entry_id -> Int4,
+        compound_id -> Int4,
+        compound_amount -> Numeric,
+        compound_units -> Text,
     }
 }
 
@@ -104,6 +118,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     compounds,
     compound_metabolites,
     entries,
+    entry_compounds,
     settings_wallpaper,
     product_compounds,
     products,

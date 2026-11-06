@@ -33,7 +33,10 @@ CREATE TABLE products (
     description TEXT,
     image_path TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    serving_size NUMERIC NOT NULL CHECK (serving_size > 0),
+    serving_unit TEXT NOT NULL CHECK (serving_unit IN ('mg', 'mL', 'unit')),
+    serving_description TEXT
 );
 
 CREATE TABLE compounds (
@@ -48,7 +51,7 @@ CREATE TABLE compounds (
 );
 
 CREATE TABLE product_compounds (
-    product_id INTEGER NOT NULL REFERENCES products(id),
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     compound_id INTEGER NOT NULL REFERENCES compounds(id),
     compound_amount BIGINT NOT NULL CHECK (compound_amount > 0),
     compound_units TEXT NOT NULL CHECK (compound_units IN ('g', 'mg', 'ug')),
@@ -72,4 +75,10 @@ CREATE TABLE entries (
     FOREIGN KEY (product_id) NOT NULL REFERENCES products(id) ON DELETE RESTRICT
 );
 
-
+CREATE TABLE entry_compounds (
+    entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    compound_id INTEGER NOT NULL REFERENCES compounds(id),
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    units TEXT NOT NULL CHECK (units IN ('mg', 'mL')),
+    PRIMARY KEY (entry_id, compound_id)
+);

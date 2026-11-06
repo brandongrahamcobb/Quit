@@ -162,3 +162,27 @@ pub struct ProductCompositionListContainer;
 
 #[derive(Component)]
 pub struct ProductSaveButtonText;
+
+#[derive(Component)]
+pub struct ProductServingSizeButton;
+
+#[derive(Component)]
+pub struct ProductServingSizeText;
+
+#[derive(Component)]
+pub struct ProductServingUnitButton;
+
+#[derive(Component)]
+pub struct ProductServingUnitText;
+
+#[derive(Component)]
+pub struct ProductServingDescriptionButton;
+
+#[derive(Component)]
+pub struct ProductServingDescriptionText;
+
+#[derive(Component)]
+pub struct ProductServingUnitOptionList;
+
+#[derive(Component)]
+pub struct ProductServingUnitOptionButton(pub String);
