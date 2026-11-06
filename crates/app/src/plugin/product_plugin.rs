@@ -20,7 +20,7 @@ use bevy::prelude::*;
 
 use crate::page::AppPage;
 use crate::resource::product_resource::{ProductCompositionLoadResults, ProductCompoundLoadResults, ProductDeleteResults, ProductImageUploadReceiver, ProductLoadReceiver, ProductPageState, ProductSaveResults};
-use crate::system::product::{apply_product_composition_load_results, apply_product_compound_load_results, apply_product_save_results, begin_product_composition_load, begin_product_delete, begin_product_image_upload, begin_product_load, cleanup_product_navigation, cycle_product_compound_units, detect_product_form_open, edit_product_fields, focus_product_fields, handle_product_dashboard_button, handle_product_delete_buttons, handle_product_form_buttons, open_products, poll_product_delete_results, poll_product_image_upload, poll_product_load, remove_product_compound, remove_product_image, save_product, select_product_route, spawn_product_navigation, toggle_product_composition, toggle_product_preview, update_product_composition_rows, update_product_compound_buttons, update_product_delete_dialog_text, update_product_form_text, update_product_image_preview, update_product_list, update_product_preview_image_sizes, update_product_route_options, update_product_save_ui};
+use crate::system::product::{apply_product_composition_load_results, apply_product_compound_load_results, apply_product_save_results, begin_product_composition_load, begin_product_delete, begin_product_image_upload, begin_product_load, cleanup_product_navigation, cycle_product_compound_units, detect_product_form_open, edit_product_fields, focus_product_fields, handle_product_dashboard_button, handle_product_delete_buttons, handle_product_form_buttons, poll_product_delete_results, poll_product_image_upload, poll_product_load, remove_product_compound, remove_product_image, save_product, select_product_route, spawn_product_navigation, toggle_product_composition, toggle_product_preview, update_product_composition_rows, update_product_compound_buttons, update_product_delete_dialog_text, update_product_form_text, update_product_image_preview, update_product_list, update_product_preview_image_sizes, update_product_route_options, update_product_save_ui};
 
 pub struct ProductPlugin;
 
@@ -34,7 +34,6 @@ impl Plugin for ProductPlugin {
             .init_resource::<ProductDeleteResults>()
             .init_resource::<ProductCompoundLoadResults>()
             .init_resource::<ProductCompositionLoadResults>()
-            .add_systems(Update, open_products)
             .add_systems(
                 Update,
                 (

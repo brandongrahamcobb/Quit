@@ -58,4 +58,5 @@ pub async fn get_product_compounds_by_id(
             .get_results::<ProductCompoundModel>(conn)
     })
     .await
+
 }

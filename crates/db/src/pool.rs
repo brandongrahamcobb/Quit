@@ -30,18 +30,12 @@ where
     T: Send + 'static,
 {
     let pool = pool.clone();
-    tokio::task::spawn_blocking(move || {
-        let mut conn = pool.get().map_err(|e| {
-            diesel::result::Error::DatabaseError(
-                diesel::result::DatabaseErrorKind::UnableToSendCommand,
-                Box::new(e.to_string()),
-            )
-        })?;
-        f(&mut conn)
+    std::thread::spawn(move || {
+        let mut conn = pool.get()?;
+        f(&mut conn).map_err(DatabaseError::from)
     })
-    .await
-    .map_err(DatabaseError::JoinError)?
-    .map_err(DatabaseError::from)
+    .join()
+    .map_err(|_| DatabaseError::ThreadPanic)?
 }
 
 pub fn new() -> Result<DbPool, DatabaseError> {

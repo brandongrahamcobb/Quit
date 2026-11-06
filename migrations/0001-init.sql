@@ -53,7 +53,7 @@ CREATE TABLE compounds (
 CREATE TABLE product_compounds (
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     compound_id INTEGER NOT NULL REFERENCES compounds(id),
-    compound_amount BIGINT NOT NULL CHECK (compound_amount > 0),
+    compound_amount NUMERIC NOT NULL CHECK (compound_amount > 0),
     compound_units TEXT NOT NULL CHECK (compound_units IN ('g', 'mg', 'ug')),
     PRIMARY KEY (product_id, compound_id)
 );

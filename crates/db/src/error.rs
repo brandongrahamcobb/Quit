@@ -39,4 +39,7 @@ pub enum DatabaseError {
 
     #[error("Concurrency join error in database layer")]
     JoinError(#[from] JoinError),
+
+    #[error("Database worker thread panicked")]
+    ThreadPanic,
 }

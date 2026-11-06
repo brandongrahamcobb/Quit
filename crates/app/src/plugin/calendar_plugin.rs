@@ -20,7 +20,7 @@ use bevy::prelude::*;
 
 use crate::page::AppPage;
 use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarState};
-use crate::system::calendar::{apply_calendar_entry_results, apply_calendar_entry_save_results, begin_calendar_product_load, cleanup_calendar_navigation, edit_calendar_entry_fields, focus_calendar_entry_field, handle_calendar_navigation, open_calendar, poll_calendar_product_load, refresh_calendar_page, request_calendar_entries, save_calendar_entry, select_calendar_date, select_calendar_product, select_calendar_view, spawn_calendar_navigation, toggle_calendar_entry_form, toggle_calendar_product_selector, update_calendar_entries_text, update_calendar_entry_error, update_calendar_product_options};
+use crate::system::calendar::{apply_calendar_entry_results, apply_calendar_entry_save_results, begin_calendar_product_load, cleanup_calendar_navigation, edit_calendar_entry_fields, focus_calendar_entry_field, handle_calendar_navigation, poll_calendar_product_load, refresh_calendar_page, request_calendar_entries, save_calendar_entry, select_calendar_date, select_calendar_product, select_calendar_view, spawn_calendar_navigation, toggle_calendar_entry_form, toggle_calendar_product_selector, update_calendar_entries_text, update_calendar_entry_error, update_calendar_product_options};
 
 pub struct CalendarPlugin;
 
@@ -34,7 +34,6 @@ impl Plugin for CalendarPlugin {
             .init_resource::<CalendarEntrySaveResults>()
             .init_resource::<CalendarProducts>()
             .init_resource::<CalendarProductLoadReceiver>()
-            .add_systems(Update, open_calendar)
             .add_systems(
                 Update,
                 (
