@@ -59,7 +59,7 @@ pub fn poll_product_load(receiver: Res<ProductLoadReceiver>, mut state: ResMut<P
 }
 
 pub fn poll_product_image_upload(
-    mut receiver: ResMut<ProductImageUploadReceiver>,
+    receiver: ResMut<ProductImageUploadReceiver>,
     mut state: ResMut<ProductPageState>,
 ) {
     let result = {
@@ -95,11 +95,11 @@ pub fn poll_product_image_upload(
 }
 
 pub fn poll_product_delete_results(
-    mut results: ResMut<ProductDeleteResults>,
+    results: ResMut<ProductDeleteResults>,
     mut state: ResMut<ProductPageState>,
 ) {
     let result = {
-        let mut receiver = results.0.lock().unwrap();
+        let receiver = results.0.lock().unwrap();
         receiver.as_ref().and_then(|receiver| receiver.try_recv().ok())
     };
     let Some((id, result)) = result else {
@@ -149,7 +149,7 @@ pub fn poll_product_compound_load_results(
 }
 
 pub fn poll_product_composition_load_results(
-    mut results: ResMut<ProductCompositionLoadResults>,
+    results: ResMut<ProductCompositionLoadResults>,
     mut state: ResMut<ProductPageState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
@@ -190,7 +190,7 @@ pub fn poll_product_composition_load_results(
 
 pub fn poll_product_save_results(
     mut form_overlay: Query<&mut Node, With<ProductFormOverlay>>,
-    mut results: Res<ProductSaveResults>,
+    results: Res<ProductSaveResults>,
     mut state: ResMut<ProductPageState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {

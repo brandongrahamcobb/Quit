@@ -24,7 +24,7 @@ use bevy::app::{App, Startup};
 use bevy::ecs::system::Commands;
 use bevy::input_focus::tab_navigation::TabNavigationPlugin;
 use db::pool::DbPool;
-// use quit::plugin::calendar_plugin::CalendarPlugin;
+use quit::plugin::calendar_plugin::CalendarPlugin;
 // use quit::plugin::compound_plugin::CompoundPlugin;
 use quit::plugin::dashboard_plugin::DashboardPlugin;
 use quit::plugin::login_plugin::LoginPlugin;
@@ -50,7 +50,7 @@ fn main() {
         LoginPlugin,
         DashboardPlugin,
         // OnboardingPlugin,
-        // CalendarPlugin,
+        CalendarPlugin,
         // CompoundPlugin,
         ProductPlugin,
         ScrollPlugin

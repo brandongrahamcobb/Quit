@@ -20,7 +20,7 @@
 
 use bevy::prelude::*;
 use crate::page::AppPage;
-use crate::resource::product_resource::{ProductCompoundLoadResults, ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductOverlay, ProductPageState};
 
 
 pub fn handle_product_escape(

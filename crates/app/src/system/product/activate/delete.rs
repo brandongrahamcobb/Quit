@@ -42,7 +42,7 @@ pub fn cancel_product_delete(
 pub fn confirm_product_delete(
     _activate: On<Activate>,
     database: Res<Database>,
-    mut results: ResMut<ProductDeleteResults>,
+    results: ResMut<ProductDeleteResults>,
     mut state: ResMut<ProductPageState>,
 ) {
     if state.deleting {

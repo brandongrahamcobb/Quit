@@ -347,7 +347,7 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                             ProductServingUnitButton,
                         )).with_children(|button| {
                             button.spawn((Text::new(""), TextFont::from_font_size(FontSize::Px(15.0)), ProductServingUnitText));
-                        }).observe(toggle_product_serving_unit_dropdown);;
+                        }).observe(toggle_product_serving_unit_dropdown);
                         dropdown.spawn((
                             Node {
                                 position_type: PositionType::Absolute,
@@ -501,13 +501,13 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                     ProductCompositionListContainer,
                 ));
                 form.spawn((Text::new("Image:"), TextFont::from_font_size(FontSize::Px(15.0))));
-                form.spawn((
+                form.spawn(
                     Node {
                         flex_direction: FlexDirection::Row,
                         column_gap: px(8),
                         ..default()
                     }
-                 )).with_children(|row| {
+                 ).with_children(|row| {
                     row.spawn((
                         Button,
                         Node { width: px(180), height: px(38), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
@@ -537,13 +537,13 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                     ProductImagePreview,
                 ));
                 form.spawn((Text::new(""), ProductErrorText));
-                form.spawn((
+                form.spawn(
                     Node {
                         flex_direction: FlexDirection::Row,
                         column_gap: px(8),
                         ..default()
                     }
-                 )).with_children(|row| {
+                 ).with_children(|row| {
                     row.spawn((
                         Button,
                         Node { width: px(120), height: px(40), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },

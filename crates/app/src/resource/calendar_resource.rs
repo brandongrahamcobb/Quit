@@ -24,6 +24,12 @@ use bigdecimal::BigDecimal;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use db::calendar::entry::model::EntryModel;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CalendarOverlay {
+    Form { editing_id: Option<i32> },
+    Delete(i32),
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CalendarView {
     Day,
@@ -33,71 +39,26 @@ pub enum CalendarView {
 }
 
 #[derive(Resource)]
-pub struct CalendarState {
+pub struct CalendarPageState {
     pub view: CalendarView,
     pub visible_date: NaiveDate,
     pub selected_date: NaiveDate,
+    pub overlay: Option<CalendarOverlay>
 }
 
-impl Default for CalendarState {
+impl Default for CalendarPageState {
     fn default() -> Self {
         let today = Local::now().date_naive();
         Self {
             view: CalendarView::Month,
             visible_date: today,
             selected_date: today,
+            overlay: None
         }
     }
 }
 
-impl CalendarState {
-    pub fn go_to_today(&mut self) {
-        let today = Local::now().date_naive();
-        self.visible_date = today;
-        self.selected_date = today;
-    }
-
-    pub fn move_next(&mut self) {
-        self.visible_date = match self.view {
-            CalendarView::Day => self
-                .visible_date
-                .checked_add_days(chrono::Days::new(1))
-                .unwrap_or(self.visible_date),
-            CalendarView::Week => self
-                .visible_date
-                .checked_add_days(chrono::Days::new(7))
-                .unwrap_or(self.visible_date),
-            CalendarView::Month => self
-                .visible_date
-                .checked_add_months(chrono::Months::new(1))
-                .unwrap_or(self.visible_date),
-        };
-        self.selected_date = self.visible_date;
-    }
-
-    pub fn move_previous(&mut self) {
-        self.visible_date = match self.view {
-            CalendarView::Day => self
-                .visible_date
-                .checked_sub_days(chrono::Days::new(1))
-                .unwrap_or(self.visible_date),
-            CalendarView::Week => self
-                .visible_date
-                .checked_sub_days(chrono::Days::new(7))
-                .unwrap_or(self.visible_date),
-            CalendarView::Month => self
-                .visible_date
-                .checked_sub_months(chrono::Months::new(1))
-                .unwrap_or(self.visible_date),
-        };
-        self.selected_date = self.visible_date;
-    }
-
-    pub fn select_date(&mut self, date: NaiveDate) {
-        self.selected_date = date;
-        self.visible_date = date;
-    }
-
+impl CalendarPageState {
     pub fn month_grid_dates(&self) -> [NaiveDate; 42] {
         let first_day = self
             .visible_date

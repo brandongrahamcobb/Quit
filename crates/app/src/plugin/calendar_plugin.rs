@@ -19,15 +19,18 @@
 use bevy::prelude::*;
 
 use crate::page::AppPage;
-use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarState};
-use crate::system::calendar::{apply_calendar_entry_results, apply_calendar_entry_save_results, begin_calendar_product_load, cleanup_calendar_navigation, edit_calendar_entry_fields, focus_calendar_entry_field, handle_calendar_navigation, poll_calendar_product_load, refresh_calendar_page, request_calendar_entries, save_calendar_entry, select_calendar_date, select_calendar_product, select_calendar_view, spawn_calendar_navigation, toggle_calendar_entry_form, toggle_calendar_product_selector, update_calendar_entries_text, update_calendar_entry_error, update_calendar_product_options};
+use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarPageState};
+use crate::system::calendar::load::{begin_calendar_entries_load, begin_calendar_product_load};
+use crate::system::calendar::poll::{poll_calendar_entry_load_results, poll_calendar_entry_save_results, poll_calendar_product_load};
+use crate::system::calendar::spawn::spawn_calendar_navigation;
+use crate::system::calendar::update::{update_calendar_entries_text, update_calendar_entry_error, update_calendar_page, update_calendar_period_title, update_calendar_product_options};
 
 pub struct CalendarPlugin;
 
 impl Plugin for CalendarPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AppPage>()
-            .init_resource::<CalendarState>()
+            .init_resource::<CalendarPageState>()
             .init_resource::<CalendarEntries>()
             .init_resource::<CalendarEntryLoadResults>()
             .init_resource::<CalendarEntryForm>()
@@ -35,29 +38,31 @@ impl Plugin for CalendarPlugin {
             .init_resource::<CalendarProducts>()
             .init_resource::<CalendarProductLoadReceiver>()
             .add_systems(
-                Update,
+                OnEnter(AppPage::Calendar),
                 (
                     begin_calendar_product_load,
-                    poll_calendar_product_load,
-                    handle_calendar_navigation,
-                    select_calendar_view,
-                    select_calendar_date,
-                    request_calendar_entries,
-                    apply_calendar_entry_results,
-                    refresh_calendar_page,
-                    toggle_calendar_entry_form,
-                    update_calendar_product_options,
-                    toggle_calendar_product_selector,
-                    select_calendar_product,
-                    focus_calendar_entry_field,
-                    edit_calendar_entry_fields,
-                    save_calendar_entry,
-                    apply_calendar_entry_save_results,
-                    update_calendar_entry_error,
-                    update_calendar_entries_text,
+                    begin_calendar_entries_load
                 )
-                .chain()
-                    .run_if(in_state(AppPage::Calendar)),
+            )
+            .add_systems(
+                Update,
+                (
+                    poll_calendar_product_load,
+                    poll_calendar_entry_load_results,
+                    poll_calendar_entry_save_results,
+                )
+                .chain().run_if(in_state(AppPage::Calendar))
+            )
+            .add_systems(
+                Update,
+                (
+                    update_calendar_entries_text,
+                    update_calendar_product_options,
+                    update_calendar_entry_error,
+                    update_calendar_period_title,
+                    update_calendar_page 
+                )
+                .chain().run_if(in_state(AppPage::Calendar)),
             )
             .add_systems(
                 OnEnter(AppPage::Calendar),

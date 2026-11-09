@@ -25,10 +25,9 @@ use bigdecimal::BigDecimal;
 use db::product::getters::get_all_product_models;
 use db::product::model::{NewProductModel, ProductCompoundInput, UpdateProductModel};
 use db::product::setters::{insert_product_with_compounds, update_product_with_compounds};
-use crate::component::product::{ProductBrandText, ProductCompositionRemoveButton, ProductCompositionSearchText, ProductCompositionUnitButton, ProductCompoundToggleButton, ProductDescriptionText, ProductEditButton, ProductFormOverlay, ProductImageRemoveButton, ProductNameText, ProductRouteOptionButton, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitOptionButton};
+use crate::component::product::{ProductBrandText, ProductCompositionRemoveButton, ProductCompositionSearchText, ProductCompositionUnitButton, ProductCompoundToggleButton, ProductDescriptionText, ProductEditButton, ProductNameText, ProductRouteOptionButton, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitOptionButton};
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductCompositionEntry, ProductCompoundLoadResults, ProductEntry, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
-use crate::system::product::load::begin_product_compound_load;
+use crate::resource::product_resource::{ProductCompositionEntry, ProductEntry, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
@@ -162,7 +161,7 @@ pub fn save_product(
 
 pub fn upload_product_image(
     _activate: On<Activate>,
-    mut receiver: ResMut<ProductImageUploadReceiver>,
+    receiver: ResMut<ProductImageUploadReceiver>,
     mut state: ResMut<ProductPageState>,
 ) {
     if state.image_loading {
@@ -216,8 +215,7 @@ pub fn remove_product_image(
 pub fn edit_product(
     activate: On<Activate>,
     edit_buttons: Query<&ProductEditButton>,
-    mut form_overlay: Query<&mut Node, With<ProductFormOverlay>>,
-    mut inputs: ParamSet<(
+    inputs: ParamSet<(
         Query<&mut EditableText, With<ProductBrandText>>,
         Query<&mut EditableText, With<ProductDescriptionText>>,
         Query<&mut EditableText, With<ProductNameText>>,
@@ -262,7 +260,7 @@ pub fn fill_form(
         Query<&mut EditableText, With<ProductServingSizeText>>,
         Query<&mut EditableText, With<ProductCompositionSearchText>>,
     )>,
-    mut state: ResMut<ProductPageState>,
+    state: ResMut<ProductPageState>,
 ) {
     fn set_text(input: &mut EditableText, value: &str) {
         input.queue_edit(TextEdit::SelectAll);
@@ -282,7 +280,7 @@ pub fn fill_form(
 
 pub fn add_product(
     _activate: On<Activate>,
-    mut inputs: ParamSet<(
+    inputs: ParamSet<(
         Query<&mut EditableText, With<ProductBrandText>>,
         Query<&mut EditableText, With<ProductDescriptionText>>,
         Query<&mut EditableText, With<ProductNameText>>,
