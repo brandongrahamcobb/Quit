@@ -19,17 +19,24 @@
 
 
 use bevy::prelude::*;
+use bevy::ui_widgets::{Activate, Button};
 
 use crate::component::calendar::OpenCalendarButton;
 use crate::component::compound::OpenCompoundsButton;
 use crate::component::dashboard::DashboardScreen;
+use crate::component::page::PageRoot;
 use crate::component::product::OpenProductsButton;
 use crate::component::settings::WallpaperBackground;
+use crate::page::AppPage;
 use crate::resource::login_resource::AuthenticatedAccount;
 use crate::resource::settings_resource::{WallpaperMode, WallpaperSettings};
 
-
-pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount>, asset_server: Res<AssetServer>, wallpaper_settings: Res<WallpaperSettings>) {
+pub fn setup_dashboard(
+    mut commands: Commands,
+    account: Res<AuthenticatedAccount>,
+    asset_server: Res<AssetServer>,
+    wallpaper_settings: Res<WallpaperSettings>,
+) {
     let image_mode = match wallpaper_settings.mode {
         WallpaperMode::Auto => NodeImageMode::Auto,
         WallpaperMode::Stretch => NodeImageMode::Stretch,
@@ -40,6 +47,7 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
         },
     };
     commands.spawn((
+        PageRoot,
         DashboardScreen,
         WallpaperBackground,
         Node {
@@ -50,7 +58,8 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
             ..default()
         },
         ImageNode::new(asset_server.load(wallpaper_settings.image.clone())).with_mode(image_mode),
-        children![(
+    )).with_children(|parent| {
+        parent.spawn((
             Node {
                 padding: UiRect::all(px(36)),
                 flex_direction: FlexDirection::Column,
@@ -58,78 +67,105 @@ pub fn setup_dashboard(mut commands: Commands, account: Res<AuthenticatedAccount
                 ..default()
             },
             BackgroundColor(Color::srgb(0.10, 0.13, 0.15)),
-            children![
-                (
-                    Text::new(format!("Welcome, {}.", account.username)),
-                    TextFont {
-                        font_size: 32.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.94, 0.96, 0.93)),
-                ),
-                (
-                    Text::new("Your quit journey starts here."),
-                    TextFont {
-                        font_size: 16.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.68, 0.74, 0.73)),
-                ),
-                (
-                    Button,
-                    OpenCalendarButton,
-                    Node {
-                        height: px(44),
-                        padding: UiRect::horizontal(px(16)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
-                    children![(
-                        Text::new("Calendar"),
-                        TextFont::from_font_size(16.0),
-                        TextColor(Color::WHITE),
-                    )],
-                ),
-                (
-                    Button,
-                    OpenCompoundsButton,
-                    Node {
-                        height: px(44),
-                        padding: UiRect::horizontal(px(16)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
-                    children![(
-                        Text::new("Compounds"),
-                        TextFont::from_font_size(16.0),
-                        TextColor(Color::WHITE),
-                    )],
-                ),
-                (
-                    Button,
-                    OpenProductsButton,
-                    Node {
-                        height: px(44),
-                        padding: UiRect::horizontal(px(16)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
-                    children![(
-                        Text::new("Products"),
-                        TextFont::from_font_size(16.0),
-                        TextColor(Color::WHITE),
-                    )],
-                )
- 
-            ],
-        )],
-    ));
+        )).with_children(|panel| {
+            panel.spawn((
+                Text::new(format!("Welcome, {}.", account.username)),
+                TextFont {
+                    font_size: FontSize::Px(32.0),
+                    ..default()
+                },
+                TextColor(Color::srgb(0.94, 0.96, 0.93)),
+            ));
+            panel.spawn((
+                Text::new("Your quit journey starts here."),
+                TextFont {
+                    font_size: FontSize::Px(16.0),
+                    ..default()
+                },
+                TextColor(Color::srgb(0.68, 0.74, 0.73)),
+            ));
+            panel.spawn((
+                Button,
+                OpenCalendarButton,
+                Node {
+                    height: px(44),
+                    padding: UiRect::horizontal(px(16)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+            )).with_children(|button| {
+                button.spawn((
+                    Text::new("Calendar"),
+                    TextFont::from_font_size(16.0),
+                    TextColor(Color::WHITE),
+                ));
+            }).observe(open_calendar);
+            panel.spawn((
+                Button,
+                OpenCompoundsButton,
+                Node {
+                    height: px(44),
+                    padding: UiRect::horizontal(px(16)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+            )).with_children(|button| {
+                button.spawn((
+                    Text::new("Compounds"),
+                    TextFont::from_font_size(16.0),
+                    TextColor(Color::WHITE),
+                ));
+            }).observe(open_compounds);
+            panel.spawn((
+                Button,
+                OpenProductsButton,
+                Node {
+                    height: px(44),
+                    padding: UiRect::horizontal(px(16)),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+            )).with_children(|button| {
+                button.spawn((
+                    Text::new("Products"),
+                    TextFont::from_font_size(16.0),
+                    TextColor(Color::WHITE),
+                ));
+            }).observe(open_products);
+        });
+    });
 }
 
+pub fn open_products(
+    _activate: On<Activate>,
+    mut next_page: ResMut<NextState<AppPage>>,
+) {
+    next_page.set(AppPage::Products);
+}
 
+pub fn open_compounds(
+    _activate: On<Activate>,
+    mut next_page: ResMut<NextState<AppPage>>,
+) {
+    next_page.set(AppPage::Compounds);
+}
+
+pub fn open_calendar(
+    _activate: On<Activate>,
+    mut next_page: ResMut<NextState<AppPage>>,
+) {
+    next_page.set(AppPage::Calendar);
+}
+
+pub fn open_dashboard(
+    _activate: On<Activate>,
+    mut next_page: ResMut<NextState<AppPage>>,
+) {
+    next_page.set(AppPage::Dashboard);
+}

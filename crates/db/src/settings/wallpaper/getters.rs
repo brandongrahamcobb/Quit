@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::account::model::AccountModel;
 use crate::error::DatabaseError;
 use crate::pool::{self, DbPool};
 use crate::schema::settings_wallpaper;

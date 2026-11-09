@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use core::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::atomic::{AtomicI32, Ordering};
 
 static CLIENT_ID_COUNTER: AtomicI32 = AtomicI32::new(0);

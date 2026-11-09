@@ -21,9 +21,7 @@ use bevy::prelude::*;
 use crate::component::login::LoginForm;
 use crate::page::AppPage;
 use crate::resource::login_resource::{LoginPending, LoginResults};
-use crate::system::login::{edit_login_fields, poll_login_results, select_login_field, submit_login};
-use crate::system::login::despawn_login;
-use crate::system::startup::setup_login;
+use crate::system::login::{poll_login_results, submit_login_on_enter, sync_login_fields};
 
 pub struct LoginPlugin;
 
@@ -33,8 +31,6 @@ impl Plugin for LoginPlugin {
             .init_resource::<LoginForm>()
             .init_resource::<LoginPending>()
             .init_resource::<LoginResults>()
-            .add_systems(Startup, setup_login)
-            .add_systems(Update, (edit_login_fields, select_login_field, submit_login, poll_login_results).run_if(in_state(AppPage::Login)))
-            .add_systems(OnExit(AppPage::Login), despawn_login);
+            .add_systems(Update, (sync_login_fields, poll_login_results, submit_login_on_enter).run_if(in_state(AppPage::Login)));
     }
 }

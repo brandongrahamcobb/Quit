@@ -83,7 +83,6 @@ impl Plugin for CompoundPlugin {
                     begin_compound_load,
                     spawn_compound_navigation,
                 ).chain()
-            )
-            .add_systems(OnExit(AppPage::Compounds), cleanup_compound_navigation);
+            );
     }
 }

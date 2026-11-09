@@ -37,7 +37,7 @@ pub async fn insert_product(
     .await
 }
 
-pub async fn update_product(
+pub async fn update_product_by_id(
     pool: &DbPool,
     product_id: i32,
     updated_product: UpdateProductModel,
@@ -60,7 +60,7 @@ pub async fn update_product(
     .await
 }
 
-pub async fn delete_product(
+pub async fn delete_product_by_id(
     pool: &DbPool,
     product_id: i32,
 ) -> Result<(), DatabaseError> {

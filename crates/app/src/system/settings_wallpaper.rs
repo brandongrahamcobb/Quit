@@ -17,16 +17,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 use bevy::prelude::*;
-use bevy::ui::{FocusPolicy, RelativeCursorPosition};
+use bevy::ui::{FocusPolicy, Pressed, RelativeCursorPosition};
+use bevy::ui_widgets::Button;
 use tokio::runtime::Builder;
 use std::path::Path;
 use std::sync::mpsc::TryRecvError;
 use std::thread;
 
 use crate::component::settings::{
-    WallpaperBackground, WallpaperChoicesList, WallpaperCloseButton, WallpaperImageChoice, WallpaperModal, WallpaperModeChoice, WallpaperModeDropdown, WallpaperModeMenu, WallpaperOpenButton, WallpaperStretchFill, WallpaperStretchLabel, WallpaperStretchSlider, WallpaperTileXButton, WallpaperTileXKnob, WallpaperTileYButton, WallpaperTileYKnob,
+    WallpaperBackground, WallpaperChoicesDropdown, WallpaperChoicesList, WallpaperCloseButton, WallpaperImageChoice, WallpaperModal, WallpaperModeChoice, WallpaperModeDropdown, WallpaperModeMenu, WallpaperOpenButton, WallpaperStretchFill, WallpaperStretchLabel, WallpaperStretchSlider, WallpaperTileXButton, WallpaperTileXKnob, WallpaperTileYButton, WallpaperTileYKnob,
 };
 use crate::resource::custom_resource::Database;
 use crate::resource::settings_resource::{
@@ -42,22 +42,12 @@ pub struct WallpaperSaveDebounce {
 }
 
 pub fn toggle_wallpaper_modal(
-    open_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<WallpaperOpenButton>),
-    >,
-    close_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<WallpaperCloseButton>),
-    >,
+    open_buttons: Query<(), (Added<Pressed>, With<WallpaperOpenButton>)>,
+    close_buttons: Query<(), (Added<Pressed>, With<WallpaperCloseButton>)>,
     mut modal: Query<&mut Node, With<WallpaperModal>>,
 ) {
-    let open = open_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed);
-    let close = close_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed);
+    let open = !open_buttons.is_empty();
+    let close = !close_buttons.is_empty();
     for mut node in &mut modal {
         if close {
             node.display = Display::None;
@@ -109,6 +99,8 @@ pub fn populate_wallpaper_choices(
                     Node {
                         width: percent(100),
                         height: px(44),
+                        min_height: px(44),
+                        flex_shrink: 0.0,
                         padding: UiRect::horizontal(px(12)),
                         align_items: AlignItems::Center,
                         ..default()
@@ -116,7 +108,7 @@ pub fn populate_wallpaper_choices(
                     BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
                     Text::new(file.clone()),
                     TextFont {
-                        font_size: 15.0,
+                        font_size: FontSize::Px(15.0),
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -127,16 +119,11 @@ pub fn populate_wallpaper_choices(
 }
 
 pub fn select_wallpaper(
-    choices: Query<
-        (&Interaction, &WallpaperImageChoice),
-        (Changed<Interaction>, With<Button>),
-    >,
+    choices: Query<&WallpaperImageChoice, (Added<Pressed>, With<Button>)>,
     mut settings: ResMut<WallpaperSettings>,
 ) {
-    for (interaction, choice) in &choices {
-        if *interaction == Interaction::Pressed {
-            settings.image = choice.0.clone();
-        }
+    for choice in &choices {
+        settings.image = choice.0.clone();
     }
 }
 
@@ -164,15 +151,10 @@ pub fn apply_wallpaper(
 }
 
 pub fn toggle_wallpaper_mode_menu(
-    buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<WallpaperModeDropdown>),
-    >,
+    buttons: Query<(), (Added<Pressed>, With<WallpaperModeDropdown>)>,
     mut menus: Query<&mut Node, With<WallpaperModeMenu>>,
 ) {
-    let pressed = buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed);
+    let pressed = !buttons.is_empty();
     if !pressed {
         return;
     }
@@ -186,17 +168,11 @@ pub fn toggle_wallpaper_mode_menu(
 }
 
 pub fn select_wallpaper_mode(
-    choices: Query<
-        (&Interaction, &WallpaperModeChoice),
-        (Changed<Interaction>, With<Button>),
-    >,
+    choices: Query<&WallpaperModeChoice, (Added<Pressed>, With<Button>)>,
     mut settings: ResMut<WallpaperSettings>,
     mut menus: Query<&mut Node, With<WallpaperModeMenu>>,
 ) {
-    for (interaction, choice) in &choices {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
+    for choice in &choices {
         settings.mode = choice.0;
         for mut menu in &mut menus {
             menu.display = Display::None;
@@ -222,43 +198,31 @@ pub fn update_wallpaper_mode_label(
 }
 
 pub fn toggle_wallpaper_tiles(
-    tile_x_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<WallpaperTileXButton>),
-    >,
-    tile_y_buttons: Query<
-        &Interaction,
-        (Changed<Interaction>, With<WallpaperTileYButton>),
-    >,
+    tile_x_buttons: Query<(), (Added<Pressed>, With<WallpaperTileXButton>)>,
+    tile_y_buttons: Query<(), (Added<Pressed>, With<WallpaperTileYButton>)>,
     mut settings: ResMut<WallpaperSettings>,
 ) {
     if settings.mode != WallpaperMode::Tiled {
         return;
     }
-    if tile_x_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed)
-    {
+    if !tile_x_buttons.is_empty() {
         settings.tile_x = !settings.tile_x;
     }
-    if tile_y_buttons
-        .iter()
-        .any(|interaction| *interaction == Interaction::Pressed)
-    {
+    if !tile_y_buttons.is_empty() {
         settings.tile_y = !settings.tile_y;
     }
 }
 
 pub fn adjust_wallpaper_stretch(
     mouse: Res<ButtonInput<MouseButton>>,
-    sliders: Query<(&Interaction, &RelativeCursorPosition), With<WallpaperStretchSlider>>,
+    sliders: Query<(&RelativeCursorPosition, Has<Pressed>), With<WallpaperStretchSlider>>,
     mut settings: ResMut<WallpaperSettings>,
 ) {
     if settings.mode != WallpaperMode::Tiled || !mouse.pressed(MouseButton::Left) {
         return;
     }
-    for (interaction, cursor) in &sliders {
-        if *interaction != Interaction::Pressed {
+    for (cursor, pressed) in &sliders {
+        if !pressed {
             continue;
         }
         let Some(position) = cursor.normalized else {
@@ -539,4 +503,20 @@ pub fn save_wallpaper_settings(
             eprintln!("could not save wallpaper settings: {error}");
         }
     });
+}
+
+pub fn toggle_wallpaper_choices(
+    buttons: Query<(), (Added<Pressed>, With<WallpaperChoicesDropdown>)>,
+    mut lists: Query<&mut Node, With<WallpaperChoicesList>>,
+) {
+    if buttons.is_empty() {
+        return;
+    }
+    for mut node in &mut lists {
+        node.display = if node.display == Display::None {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
 }

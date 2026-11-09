@@ -186,3 +186,15 @@ pub struct ProductServingUnitOptionList;
 
 #[derive(Component)]
 pub struct ProductServingUnitOptionButton(pub String);
+
+#[derive(Component)]
+pub struct ProductPreviewOverlay;
+
+#[derive(Component)]
+pub struct ProductPreviewPanel;
+
+#[derive(Component)]
+pub struct ProductPreviewContent;
+
+#[derive(Component)]
+pub struct ProductCompositionSearchText;

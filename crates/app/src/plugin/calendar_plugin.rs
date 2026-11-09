@@ -62,7 +62,6 @@ impl Plugin for CalendarPlugin {
             .add_systems(
                 OnEnter(AppPage::Calendar),
                 spawn_calendar_navigation,
-            )
-            .add_systems(OnExit(AppPage::Calendar), cleanup_calendar_navigation);
+            );
     }
 }

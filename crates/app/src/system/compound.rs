@@ -149,7 +149,7 @@ pub fn spawn_compound_navigation(mut commands: Commands) {
                 header.spawn((
                     Text::new("Compounds"),
                     TextFont {
-                        font_size: 28.0,
+                        font_size: FontSize::Px(28.0),
                         ..default()
                     },
                 ));
@@ -488,7 +488,7 @@ pub fn update_compound_list(
                 row.spawn((
                     Text::new(compound.common_name.clone()),
                     TextFont {
-                        font_size: 16.0,
+                        font_size: FontSize::Px(16.0),
                         ..default()
                     },
                     Node {
@@ -926,7 +926,7 @@ pub fn update_compound_metabolite_buttons(
             )).with_children(|button| {
                 button.spawn((
                     Text::new(label),
-                    TextFont { font_size: 16.0, ..default() },
+                    TextFont { font_size: FontSize::Px(16.0), ..default() },
                     TextColor(Color::WHITE),
                 ));
             });
@@ -1274,14 +1274,5 @@ pub fn handle_compound_dashboard_button(
 ) {
     if buttons.iter().any(|interaction| *interaction == Interaction::Pressed) {
         next_page.set(AppPage::Dashboard);
-    }
-}
-
-pub fn cleanup_compound_navigation(
-    mut commands: Commands,
-    roots: Query<Entity, With<CompoundNavigationRoot>>,
-) {
-    for entity in &roots {
-        commands.entity(entity).despawn();
     }
 }

@@ -80,3 +80,6 @@ pub struct WallpaperStretchFill;
 
 #[derive(Component)]
 pub struct WallpaperStretchLabel;
+
+#[derive(Component)]
+pub struct WallpaperChoicesDropdown;

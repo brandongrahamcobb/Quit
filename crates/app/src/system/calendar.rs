@@ -1291,3 +1291,4 @@ pub fn toggle_calendar_product_selector(
     form.product_selector_open = !form.product_selector_open;
     node.display = if form.product_selector_open { Display::Flex } else { Display::None };
 }
+

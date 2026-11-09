@@ -29,22 +29,17 @@ use crate::resource::compound_resource::CompoundEntry;
 pub struct ProductPageState {
     pub products: Vec<ProductEntry>,
     pub compounds: Vec<CompoundEntry>,
-    pub editing_id: Option<i32>,
     pub name: String,
     pub route: String,
     pub brand: String,
     pub description: String,
     pub selected_compounds: Vec<ProductCompositionEntry>,
-    pub focused_field: Option<ProductFormField>,
     pub route_selector_open: bool,
     pub error: Option<String>,
     pub loading: bool,
     pub search_query: String,
     pub image_path: Option<String>,
     pub image_loading: bool,
-    pub caret_started_at: f64,
-    pub expanded_preview_id: Option<i32>,
-    pub deleting_id: Option<i32>,
     pub deleting_name: Option<String>,
     pub delete_error: Option<String>,
     pub deleting: bool,
@@ -53,10 +48,13 @@ pub struct ProductPageState {
     pub composition_loading: bool,
     pub composition_load_requested_id: Option<i32>,
     pub composition_load_generation: u64,
+    pub composition_search_query: String,
+    pub composition_search_query_open: bool,
     pub serving_size: String,
     pub serving_unit: String,
     pub serving_description: String,
     pub serving_unit_selector_open: bool,
+    pub overlay: Option<ProductOverlay>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,19 +76,6 @@ pub struct ProductCompositionEntry {
     pub compound_name: String,
     pub compound_amount: String,
     pub compound_units: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProductFormField {
-    Name,
-    Route,
-    Brand,
-    Description,
-    Search,
-    CompoundAmount(i32),
-    ServingSize,
-    ServingUnit,
-    ServingDescription,
 }
 
 #[derive(Resource, Default)]
@@ -150,4 +135,11 @@ impl Default for ProductCompositionLoadResults {
         let (sender, receiver) = channel();
         Self { sender, receiver: Mutex::new(receiver) }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProductOverlay {
+    Preview(i32),
+    Form { editing_id: Option<i32> },
+    Delete(i32),
 }

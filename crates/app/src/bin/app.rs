@@ -22,12 +22,16 @@ use std::collections::HashMap;
 use bevy::DefaultPlugins;
 use bevy::app::{App, Startup};
 use bevy::ecs::system::Commands;
+use bevy::input_focus::tab_navigation::TabNavigationPlugin;
 use db::pool::DbPool;
-use quit::plugin::calendar_plugin::CalendarPlugin;
-use quit::plugin::compound_plugin::CompoundPlugin;
+// use quit::plugin::calendar_plugin::CalendarPlugin;
+// use quit::plugin::compound_plugin::CompoundPlugin;
 use quit::plugin::dashboard_plugin::DashboardPlugin;
 use quit::plugin::login_plugin::LoginPlugin;
-use quit::plugin::onboarding_plugin::OnboardingPlugin;
+use quit::plugin::page_plugin::PagePlugin;
+use quit::plugin::scroll_plugin::ScrollPlugin;
+use quit::plugin::startup_plugin::StartupPlugin;
+// use quit::plugin::onboarding_plugin::OnboardingPlugin;
 use quit::plugin::product_plugin::ProductPlugin;
 use quit::resource::custom_resource::{ClientMap, Database};
 use tracing_subscriber::EnvFilter;
@@ -38,13 +42,19 @@ fn main() {
         .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .init();
     let mut app: App = App::new();
-    app.add_plugins(DefaultPlugins);
-    app.add_plugins(LoginPlugin);
-    app.add_plugins(OnboardingPlugin);
-    app.add_plugins(DashboardPlugin);
-    app.add_plugins(CalendarPlugin);
-    app.add_plugins(CompoundPlugin);
-    app.add_plugins(ProductPlugin);
+    app.add_plugins((
+        DefaultPlugins,
+        TabNavigationPlugin,
+        StartupPlugin,
+        PagePlugin,
+        LoginPlugin,
+        DashboardPlugin,
+        // OnboardingPlugin,
+        // CalendarPlugin,
+        // CompoundPlugin,
+        ProductPlugin,
+        ScrollPlugin
+    ));
     let db: DbPool = db::pool::new().expect("failed to create database pool");
     app.insert_resource(ClientMap(HashMap::new()));
     app.insert_resource(Database(db));

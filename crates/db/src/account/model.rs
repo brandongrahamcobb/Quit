@@ -64,3 +64,16 @@ impl AccountModel {
         }
     }
 }
+
+#[derive(Insertable)]
+#[diesel(table_name = accounts)]
+pub struct NewAccountModel {
+    pub username: String,
+    pub password: String,
+    pub pic: Option<String>,
+    pub gender: String,
+    pub accepted_tos: bool,
+    pub banned: bool,
+    pub admin: bool,
+    pub quit_status: Option<String>,
+}

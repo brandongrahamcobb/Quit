@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::calendar::entry::error::EntryModelError;
 use crate::schema::{entries, entry_compounds};
 use bigdecimal::BigDecimal;
 use diesel::prelude::*;

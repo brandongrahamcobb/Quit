@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::account::model::AccountModel;
+use crate::account::model::{AccountModel, NewAccountModel};
 use crate::error::DatabaseError;
 use crate::pool;
 use crate::pool::DbPool;
@@ -80,6 +80,17 @@ pub async fn set_quit_status_by_acc_id(
     .await
 }
 
+pub async fn insert_account(
+    pool: &DbPool,
+    new_acc: NewAccountModel,
+) -> Result<AccountModel, DatabaseError> {
+    pool::spawn_db(pool, move |conn| {
+        diesel::insert_into(accounts::table)
+            .values(new_acc)
+            .get_result::<AccountModel>(conn)
+    })
+    .await
+}
 // pub async fn delete_acc_by_id(pool: &DbPool, acc_id: i32) -> Result<usize, DatabaseError> {
 //     pool::spawn_db(pool, move |conn| {
 //         diesel::delete(accounts::table.filter(accounts::id.eq(acc_id))).execute(conn)

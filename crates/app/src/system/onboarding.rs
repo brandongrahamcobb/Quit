@@ -59,12 +59,12 @@ pub fn setup_onboarding(mut commands: Commands) {
             children![
                 (
                     Text::new("Before you begin"),
-                    TextFont { font_size: 30.0, ..default() },
+                    TextFont { font_size: FontSize::Px(30.0), ..default() },
                     TextColor(Color::srgb(0.94, 0.96, 0.93)),
                 ),
                 (
                         Text::new("Where are you in your quit journey?"),
-                        TextFont { font_size: 20.0, ..default() },
+                        TextFont { font_size: FontSize::Px(20.0), ..default() },
                         TextColor(Color::srgb(0.94, 0.96, 0.93)),
                     ),
                     (
@@ -77,7 +77,7 @@ pub fn setup_onboarding(mut commands: Commands) {
                             ..default()
                         },
                         BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
-                        children![(Text::new("Not ready to quit"), TextFont { font_size: 16.0, ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
+                        children![(Text::new("Not ready to quit"), TextFont { font_size: FontSize::Px(16.0), ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
                     ),
                     (
                         Button,
@@ -89,7 +89,7 @@ pub fn setup_onboarding(mut commands: Commands) {
                             ..default()
                         },
                         BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
-                        children![(Text::new("Ready to quit"), TextFont { font_size: 16.0, ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
+                        children![(Text::new("Ready to quit"), TextFont { font_size: FontSize::Px(16.0), ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
                     ),
                     (
                         Button,
@@ -101,22 +101,22 @@ pub fn setup_onboarding(mut commands: Commands) {
                             ..default()
                         },
                         BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
-                        children![(Text::new("Already quit"), TextFont { font_size: 16.0, ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
+                        children![(Text::new("Already quit"), TextFont { font_size: FontSize::Px(16.0), ..default() }, TextColor(Color::srgb(0.94, 0.96, 0.93)))],
                     ),
                     (
                         Text::new("Choose one to continue."),
                         QuitStatusDisplay,
-                        TextFont { font_size: 14.0, ..default() },
+                        TextFont { font_size: FontSize::Px(14.0), ..default() },
                         TextColor(Color::srgb(0.68, 0.74, 0.73)),
                     ),
                 (
                     Text::new("Terms of Service"),
-                    TextFont { font_size: 18.0, ..default() },
+                    TextFont { font_size: FontSize::Px(18.0), ..default() },
                     TextColor(Color::srgb(0.68, 0.74, 0.73)),
                 ),
                 (
                     Text::new("Replace this placeholder with the terms you want users to review."),
-                    TextFont { font_size: 16.0, ..default() },
+                    TextFont { font_size: FontSize::Px(16.0), ..default() },
                     TextColor(Color::srgb(0.88, 0.90, 0.87)),
                 ),
                 (
@@ -132,7 +132,7 @@ pub fn setup_onboarding(mut commands: Commands) {
                     children![(
                         Text::new("[ ] I have read and accept the Terms of Service"),
                         TermsCheckboxLabel,
-                        TextFont { font_size: 15.0, ..default() },
+                        TextFont { font_size: FontSize::Px(15.0), ..default() },
                         TextColor(Color::srgb(0.94, 0.96, 0.93)),
                     )],
                 ),
@@ -148,14 +148,14 @@ pub fn setup_onboarding(mut commands: Commands) {
                     BackgroundColor(Color::srgb(0.22, 0.48, 0.39)),
                     children![(
                         Text::new("Continue"),
-                        TextFont { font_size: 17.0, ..default() },
+                        TextFont { font_size: FontSize::Px(17.0), ..default() },
                         TextColor(Color::srgb(0.98, 0.99, 0.97)),
                     )],
                 ),
                 (
                     Text::new(""),
                     TermsStatus,
-                    TextFont { font_size: 14.0, ..default() },
+                    TextFont { font_size: FontSize::Px(14.0), ..default() },
                     TextColor(Color::srgb(0.95, 0.57, 0.48)),
                 ),
             ],

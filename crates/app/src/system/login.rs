@@ -16,160 +16,234 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-use bevy::input::ButtonState;
-use bevy::input::keyboard::KeyboardInput;
+use bevy::input_focus::InputFocus;
+use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
 use bevy::prelude::*;
+use bevy::text::{EditableText, TextCursorStyle};
+use bevy::ui_widgets::{Activate, Button, TextInput, observe};
 use db::account::getters::get_acc_model_by_username;
 use std::sync::mpsc::TryRecvError;
 use tokio::runtime::Builder;
+
 use crate::component::login::{
-    LoginFocus, LoginForm, LoginScreen, LoginStatusDisplay, LoginSubmit, PasswordDisplay, PasswordField, UsernameDisplay, UsernameField
+    LoginForm, LoginScreen, LoginStatusDisplay, LoginSubmit, PasswordDisplay, UsernameDisplay
 };
+use crate::component::page::PageRoot;
 use crate::page::AppPage;
 use crate::resource::custom_resource::Database;
 use crate::resource::login_resource::{
     AuthenticatedAccount, LoginPending, LoginResult, LoginResults,
 };
 
-pub fn despawn_login(mut commands: Commands, screens: Query<Entity, With<LoginScreen>>) {
-    for screen in &screens {
-        commands.entity(screen).despawn();
-    }
-}
 
-pub fn edit_login_fields(
-    mut keyboard: MessageReader<KeyboardInput>,
-    time: Res<Time>,
-    mut form: ResMut<LoginForm>,
-    mut displays: Query<(&mut Text, Option<&UsernameDisplay>, Option<&PasswordDisplay>)>,
-) {
-    for input in keyboard.read() {
-        if input.state != ButtonState::Pressed {
-            continue;
-        }
-        match input.key_code {
-            KeyCode::Backspace => match form.focused {
-                LoginFocus::Username => {
-                    form.username.pop();
-                }
-                LoginFocus::Password => {
-                    form.password.pop();
-                }
+pub fn setup_login(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2d);
+    commands.spawn((
+        PageRoot,
+        LoginScreen,
+        Node {
+            width: percent(100),
+            height: percent(100),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        ImageNode::new(asset_server.load("quit_app_splash.png")).with_mode(NodeImageMode::Auto),
+        children![(
+            Node {
+                width: px(440),
+                padding: UiRect::all(px(36)),
+                flex_direction: FlexDirection::Column,
+                row_gap: px(18),
+                ..default()
             },
-            KeyCode::Tab => {
-                form.focused = match form.focused {
-                    LoginFocus::Username => LoginFocus::Password,
-                    LoginFocus::Password => LoginFocus::Username,
-                };
-            }
-            _ => {
-                let Some(text) = input.text.as_deref() else {
-                    continue;
-                };
-                let target = match form.focused {
-                    LoginFocus::Username => &mut form.username,
-                    LoginFocus::Password => &mut form.password,
-                };
-                target.extend(text.chars().filter(|character| !character.is_control()));
-            }
-        }
-    }
-    let blink_on = (time.elapsed_secs_f64() - form.caret_started_at) % 1.0 < 0.5;
-    for (mut text, username_display, password_display) in &mut displays {
-        if username_display.is_some() {
-            let active = form.show_caret && matches!(form.focused, LoginFocus::Username);
-            let caret = active && blink_on;
-            text.0 = if form.username.is_empty() {
-                if !active {
-                    "Username".to_owned()
-                } else if caret {
-                    "|".to_owned()
-                } else {
-                    String::new()
-                }
-            } else if caret {
-                format!("{}|", form.username)
-            } else {
-                form.username.clone()
-            };
-        }
-        if password_display.is_some() {
-            let active = form.show_caret && matches!(form.focused, LoginFocus::Password);
-            let caret = active && blink_on;
-            let masked_password = "*".repeat(form.password.chars().count());
-            text.0 = if form.password.is_empty() {
-                if !active {
-                    "Password".to_owned()
-                } else if caret {
-                    "|".to_owned()
-                } else {
-                    String::new()
-                }
-            } else if caret {
-                format!("{masked_password}|")
-            } else {
-                masked_password
-            };
-        }
-    }
+            TabGroup::new(0),
+            BackgroundColor(Color::srgb(0.10, 0.13, 0.15)),
+            children![
+                (
+                    Text::new("Welcome back"),
+                    TextFont {
+                        font_size: FontSize::Px(32.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.96, 0.93)),
+                ),
+                (
+                    Text::new("Sign in."),
+                    TextFont {
+                        font_size: FontSize::Px(16.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.68, 0.74, 0.73)),
+                ),
+                (
+                   Text::new("Username"),
+                    TextFont {
+                        font_size: FontSize::Px(13.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.68, 0.74, 0.73)),
+                ),
+                (
+                    Node {
+                        width: percent(100),
+                        height: px(52),
+                        padding: UiRect {
+                            left: px(14),
+                            right: px(14),
+                            top: px(16),
+                            bottom: px(16),
+                        },
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                    BorderColor::all(Color::srgb(0.28, 0.36, 0.37)),
+                    TextInput,
+                    EditableText::default(),
+                    TextLayout::new(Justify::Left, LineBreak::NoWrap),
+                    TextCursorStyle::default(),
+                    TextFont {
+                        font_size: FontSize::Px(16.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.96, 0.93)),
+                    TabIndex(0),
+                    UsernameDisplay,
+                ),
+                (
+                    Text::new("Password"),
+                    TextFont {
+                        font_size: FontSize::Px(13.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.68, 0.74, 0.73)),
+                ),
+                (
+                    Node {
+                        width: percent(100),
+                        height: px(52),
+                        padding: UiRect {
+                            left: px(14),
+                            right: px(14),
+                            top: px(16),
+                            bottom: px(16),
+                        },
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                    BorderColor::all(Color::srgb(0.28, 0.36, 0.37)),
+                    TextInput,
+                    EditableText::default(),
+                    TextLayout::no_wrap(),
+                    TextCursorStyle::default(),
+                    TextFont {
+                        font_size: FontSize::Px(16.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.94, 0.96, 0.93)),
+                    TabIndex(1),
+                    PasswordDisplay,
+                ),
+                (
+                    Button,
+                    LoginSubmit,
+                    Node {
+                        width: percent(100),
+                        height: px(52),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.22, 0.48, 0.39)),
+                    observe(submit_login),
+                    children![(
+                        Text::new("Sign in"),
+                        TextFont {
+                            font_size: FontSize::Px(17.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.98, 0.99, 0.97)),
+                    )],
+                ),
+                (
+                    Text::new(""),
+                    LoginStatusDisplay,
+                    TextFont {
+                        font_size: FontSize::Px(14.0),
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.95, 0.57, 0.48)),
+                ),
+            ],
+        )],
+    ));
 }
 
-pub fn select_login_field(
-    mut interactions: Query<
-        (&Interaction, Option<&UsernameField>, Option<&PasswordField>),
-        (Changed<Interaction>, With<Button>),
-    >,
-    time: Res<Time>,
+pub fn sync_login_fields(
     mut form: ResMut<LoginForm>,
+    inputs: Query<(&EditableText, Option<&UsernameDisplay>, Option<&PasswordDisplay>)>,
 ) {
-    for (interaction, username, password) in &mut interactions {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
+    for (input, username, password) in &inputs {
         if username.is_some() {
-            form.focused = LoginFocus::Username;
-            form.caret_started_at = time.elapsed_secs_f64();
-            form.show_caret = true;
-        } else if password.is_some() {
-            form.focused = LoginFocus::Password;
-            form.caret_started_at = time.elapsed_secs_f64();
-            form.show_caret = true;
+            form.username = input.value().to_string();
+        }
+        if password.is_some() {
+            form.password = input.value().to_string();
         }
     }
 }
 
-pub fn submit_login(
-    interactions: Query<&Interaction, (Changed<Interaction>, With<LoginSubmit>)>,
-    mut keyboard: MessageReader<KeyboardInput>,
+pub fn submit_login_on_enter(
+    input_focus: Res<InputFocus>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    inputs: Query<(), Or<(With<UsernameDisplay>, With<PasswordDisplay>)>>,
     mut form: ResMut<LoginForm>,
     database: Res<Database>,
     results: Res<LoginResults>,
     mut pending: ResMut<LoginPending>,
     mut status: Query<&mut Text, With<LoginStatusDisplay>>,
 ) {
-    if pending.0 || !interactions.iter().any(|interaction| *interaction == Interaction::Pressed) {
-        let mut enter_pressed = false;
-        for input in keyboard.read() {
-            enter_pressed |= input.state == ButtonState::Pressed
-                && matches!(input.key_code, KeyCode::Enter | KeyCode::NumpadEnter);
+    if !keyboard_input.just_pressed(KeyCode::Enter) {
+        return;
+    }
+    if let Some(focused_entity) = input_focus.get() {
+        if inputs.contains(focused_entity) {
+            start_login(form.as_mut(), database.as_ref(), results.as_ref(), pending.as_mut(), &mut status);
         }
-        let button_pressed = interactions
-            .iter()
-            .any(|interaction| *interaction == Interaction::Pressed);
-        if pending.0 || (!enter_pressed && !button_pressed) {
-            return;
-        }
+    }
+}
+
+pub fn submit_login(
+    _activate: On<Activate>,
+    mut form: ResMut<LoginForm>,
+    database: Res<Database>,
+    results: Res<LoginResults>,
+    mut pending: ResMut<LoginPending>,
+    mut status: Query<&mut Text, With<LoginStatusDisplay>>,
+) {
+    start_login(form.as_mut(), database.as_ref(), results.as_ref(), pending.as_mut(), &mut status);
+}
+
+pub fn start_login(
+    form: &mut LoginForm,
+    database: &Database,
+    results: &LoginResults,
+    pending: &mut LoginPending,
+    status: &mut Query<&mut Text, With<LoginStatusDisplay>>,
+) {
+    if pending.0 {
+        return;
     }
     let username = form.username.trim().to_owned();
     let password = std::mem::take(&mut form.password);
     if username.is_empty() || password.is_empty() {
-        for mut text in &mut status {
+        for mut text in status.iter_mut() {
             text.0 = "Enter your username and password.".to_owned();
         }
         return;
     }
     pending.0 = true;
-    for mut text in &mut status {
+    for mut text in status.iter_mut() {
         text.0 = "Signing in…".to_owned();
     }
     let pool = database.0.clone();
@@ -178,9 +252,7 @@ pub fn submit_login(
         let outcome = match Builder::new_current_thread().build() {
             Ok(runtime) => runtime.block_on(async move {
                 match get_acc_model_by_username(&pool, username).await {
-                    Ok(account) if account.banned => {
-                        LoginResult::InvalidCredentials
-                    }
+                    Ok(account) if account.banned => LoginResult::InvalidCredentials,
                     Ok(account) => match inc::account::authenticate(account.password, password) {
                         Ok(true) => match account.id {
                             Some(id) => LoginResult::Authenticated {
@@ -197,9 +269,7 @@ pub fn submit_login(
                             LoginResult::DatabaseUnavailable
                         }
                     },
-                    Err(db::error::DatabaseError::DieselError(
-                        diesel::result::Error::NotFound,
-                    )) => LoginResult::InvalidCredentials,
+                    Err(db::error::DatabaseError::DieselError(diesel::result::Error::NotFound)) => LoginResult::InvalidCredentials,
                     Err(error) => {
                         eprintln!("account lookup failed: {error}");
                         LoginResult::DatabaseUnavailable

@@ -19,23 +19,18 @@
 
 
 use bevy::prelude::*;
-use bevy::ui::{FocusPolicy, RelativeCursorPosition};
+use bevy::ui::{FocusPolicy, Pressed, RelativeCursorPosition};
+use bevy::ui_widgets::Button;
 
 use crate::component::dashboard::DashboardScreen;
-use crate::component::settings::{SettingsPage, SettingsPageButton, SettingsPagePanel, WallpaperChoicesList, WallpaperCloseButton, WallpaperModal, WallpaperModeChoice, WallpaperModeDropdown, WallpaperModeMenu, WallpaperOpenButton, WallpaperStretchFill, WallpaperStretchLabel, WallpaperStretchSlider, WallpaperTileXButton, WallpaperTileXKnob, WallpaperTileYButton, WallpaperTileYKnob};
+use crate::component::settings::{SettingsPage, SettingsPageButton, SettingsPagePanel, WallpaperChoicesDropdown, WallpaperChoicesList, WallpaperCloseButton, WallpaperModal, WallpaperModeChoice, WallpaperModeDropdown, WallpaperModeMenu, WallpaperOpenButton, WallpaperStretchFill, WallpaperStretchLabel, WallpaperStretchSlider, WallpaperTileXButton, WallpaperTileXKnob, WallpaperTileYButton, WallpaperTileYKnob};
 use crate::resource::settings_resource::WallpaperMode;
 
 pub fn select_settings_page(
-    buttons: Query<
-        (&Interaction, &SettingsPageButton),
-        (Changed<Interaction>, With<Button>),
-    >,
+    buttons: Query<&SettingsPageButton, (Added<Pressed>, With<Button>)>,
     mut panels: Query<(&mut Node, &SettingsPagePanel)>,
 ) {
-    for (interaction, button) in &buttons {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
+    for button in &buttons {
         for (mut node, panel) in &mut panels {
             node.display = if panel.0 == button.0 {
                 Display::Flex
@@ -69,7 +64,7 @@ pub fn setup_settings_controls(
                 children![(
                     Text::new("Settings"),
                     TextFont {
-                        font_size: 16.0,
+                        font_size: FontSize::Px(16.0),
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -103,7 +98,7 @@ pub fn setup_settings_controls(
                         (
                             Text::new("Settings"),
                             TextFont {
-                                font_size: 24.0,
+                                font_size: FontSize::Px(24.0),
                                 ..default()
                             },
                             TextColor(Color::WHITE),
@@ -125,7 +120,7 @@ pub fn setup_settings_controls(
                             children![(
                                 Text::new("x"),
                                 TextFont {
-                                    font_size: 24.0,
+                                    font_size: FontSize::Px(24.0),
                                     ..default()
                                 },
                                 TextColor(Color::WHITE),
@@ -207,18 +202,54 @@ pub fn setup_settings_controls(
                                     },
                                     children![
                                         (
-                                            WallpaperChoicesList,
                                             Node {
                                                 width: percent(100),
-                                                flex_direction: FlexDirection::Column,
-                                                row_gap: px(8),
+                                                position_type: PositionType::Relative,
                                                 ..default()
                                             },
+                                            children![
+                                                (
+                                                    Button,
+                                                    WallpaperChoicesDropdown,
+                                                    Node {
+                                                        width: percent(100),
+                                                        height: px(42),
+                                                        justify_content: JustifyContent::Center,
+                                                        align_items: AlignItems::Center,
+                                                        ..default()
+                                                    },
+                                                    BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
+                                                    Text::new("Choose wallpaper ▾"),
+                                                    TextFont {
+                                                        font_size: FontSize::Px(15.0),
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::WHITE),
+                                                ),
+                                                (
+                                                    WallpaperChoicesList,
+                                                    GlobalZIndex(10),
+                                                    ScrollPosition::default(),
+                                                    Node {
+                                                        position_type: PositionType::Absolute,
+                                                        top: px(46),
+                                                        left: px(0),
+                                                        width: percent(100),
+                                                        height: px(220),
+                                                        display: Display::None,
+                                                        flex_direction: FlexDirection::Column,
+                                                        row_gap: px(8),
+                                                        overflow: Overflow::scroll_y(),
+                                                        ..default()
+                                                    },
+                                                    BackgroundColor(Color::srgb(0.05, 0.07, 0.08)),
+                                                ),
+                                            ],
                                         ),
                                         (
                                             Text::new("Image mode"),
                                             TextFont {
-                                                font_size: 16.0,
+                                                font_size: FontSize::Px(16.0),
                                                 ..default()
                                             },
                                             TextColor(Color::WHITE),
@@ -236,7 +267,7 @@ pub fn setup_settings_controls(
                                             BackgroundColor(Color::srgb(0.07, 0.09, 0.10)),
                                             Text::new("Tiled ▾"),
                                             TextFont {
-                                                font_size: 15.0,
+                                                font_size: FontSize::Px(15.0),
                                                 ..default()
                                             },
                                             TextColor(Color::WHITE),
