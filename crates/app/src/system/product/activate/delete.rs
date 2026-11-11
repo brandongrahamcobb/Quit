@@ -22,40 +22,39 @@ use bevy::ui_widgets::Activate;
 use db::product::setters::delete_product_by_id;
 use crate::component::product::ProductDeleteButton;
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductDeleteResults, ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductDeleteResults, ProductDeletionState, ProductOverlay, ProductPageState};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
 
 pub fn cancel_product_delete(
     _activate: On<Activate>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut deletion_state: ResMut<ProductDeletionState>,
 ) {
-    if state.deleting {
-        return;
-    }
-    state.overlay = None;
-    state.deleting_name = None;
-    state.delete_error = None;
+    deletion_state.name = None;
+    deletion_state.error = None;
+    page_state.overlay = None;
 }
 
 pub fn confirm_product_delete(
     _activate: On<Activate>,
     database: Res<Database>,
     results: ResMut<ProductDeleteResults>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut deletion_state: ResMut<ProductDeletionState>,
 ) {
-    if state.deleting {
+    if deletion_state.deleting {
         return;
     }
-    let Some(ProductOverlay::Delete(id)) = state.overlay else {
+    let Some(ProductOverlay::Delete(id)) = page_state.overlay else {
         return;
     };
     let pool = database.0.clone();
     let (sender, receiver) = channel();
     *results.0.lock().unwrap() = Some(receiver);
-    state.deleting = true;
-    state.delete_error = None;
+    deletion_state.deleting = true;
+    deletion_state.error = None;
     thread::spawn(move || {
         let runtime = Builder::new_current_thread().enable_all().build();
         let result = match runtime {
@@ -64,21 +63,23 @@ pub fn confirm_product_delete(
         };
         let _ = sender.send((id, result));
     });
+    page_state.overlay = None;
 }
 
 pub fn delete_product(
     activate: On<Activate>,
     delete_buttons: Query<&ProductDeleteButton>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut deletion_state: ResMut<ProductDeletionState>,
 ) {
     let Ok(button) = delete_buttons.get(activate.entity) else {
         return;
     };
     let id = button.0;
-    let Some(name) = state.products.iter().find(|product| product.id == id).map(|product| product.name.clone()) else {
+    let Some(name) = page_state.products.iter().find(|product| product.id == id).map(|product| product.name.clone()) else {
         return;
     };
-    state.overlay = Some(ProductOverlay::Delete(id));
-    state.deleting_name = Some(name);
-    state.delete_error = None;
+    deletion_state.name = Some(name);
+    deletion_state.error = None;
+    page_state.overlay = Some(ProductOverlay::Delete(id));
 }

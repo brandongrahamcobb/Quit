@@ -19,11 +19,11 @@
 
 use bevy::prelude::*;
 use crate::component::product::ProductFormOverlay;
-use crate::resource::product_resource::{ProductCompositionEntry, ProductCompositionLoadResults, ProductCompoundLoadResults, ProductDeleteResults, ProductImageUploadReceiver, ProductLoadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
+use crate::resource::product_resource::{ProductCompositionEntry, ProductCompositionLoadResults, ProductCompoundLoadResults, ProductDeleteResults, ProductDeletionState, ProductFormState, ProductImageUploadReceiver, ProductLoadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
 use std::sync::mpsc::TryRecvError;
 
 
-pub fn poll_product_load(receiver: Res<ProductLoadReceiver>, mut state: ResMut<ProductPageState>) {
+pub fn poll_product_load(receiver: Res<ProductLoadReceiver>, mut page_state: ResMut<ProductPageState>) {
     let result = {
         let Ok(mut slot) = receiver.0.lock() else {
             return;
@@ -46,21 +46,21 @@ pub fn poll_product_load(receiver: Res<ProductLoadReceiver>, mut state: ResMut<P
     let Some(result) = result else {
         return;
     };
-    state.loading = false;
+    page_state.loading = false;
     match result {
         Ok(products) => {
-            state.products = products;
-            state.error = None;
+            page_state.products = products;
+            page_state.error = None;
         }
         Err(error) => {
-            state.error = Some(error);
+            page_state.error = Some(error);
         }
     }
 }
 
 pub fn poll_product_image_upload(
     receiver: ResMut<ProductImageUploadReceiver>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let result = {
         let mut slot = receiver.0.lock().unwrap();
@@ -80,15 +80,15 @@ pub fn poll_product_image_upload(
         }
     };
     if let Some(result) = result {
-        state.image_loading = false;
+        form_state.image_loading = false;
         match result {
             Ok(Some(path)) => {
-                state.image_path = Some(path);
-                state.error = None;
+                form_state.image_path = Some(path);
+                form_state.error = None;
             }
             Ok(None) => {}
             Err(error) => {
-                state.error = Some(error);
+                form_state.error = Some(error);
             }
         }
     }
@@ -96,7 +96,8 @@ pub fn poll_product_image_upload(
 
 pub fn poll_product_delete_results(
     results: ResMut<ProductDeleteResults>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut deletion_state: ResMut<ProductDeletionState>,
 ) {
     let result = {
         let receiver = results.0.lock().unwrap();
@@ -106,43 +107,41 @@ pub fn poll_product_delete_results(
         return;
     };
     *results.0.lock().unwrap() = None;
-    state.deleting = false;
+    deletion_state.deleting = false;
     match result {
         Ok(()) => {
-            state.products.retain(|product| product.id != id);
-            if state.overlay == Some(ProductOverlay::Preview(id)) || state.overlay == Some(ProductOverlay::Delete(id)) {
-                state.overlay = None;
+            page_state.products.retain(|product| product.id != id);
+            if page_state.overlay == Some(ProductOverlay::Preview(id)) || page_state.overlay == Some(ProductOverlay::Delete(id)) {
+                page_state.overlay = None;
             }
-            state.deleting_name = None;
-            state.delete_error = None;
+            deletion_state.name = None;
+            deletion_state.error = None;
         }
         Err(error) => {
-            state.delete_error = Some(error);
+            deletion_state.error = Some(error);
         }
     }
 }
 
-
-
 pub fn poll_product_compound_load_results(
     results: Res<ProductCompoundLoadResults>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
         return;
     };
     while let Ok(result) = receiver.try_recv() {
-        state.compounds_loading = false;
+        page_state.compounds_loading = false;
         match result {
             Ok(compounds) => {
-                state.compounds = compounds;
-                state.error = None;
-                state.compounds_loaded = true;
-                state.compounds_loading = false;
+                page_state.compounds = compounds;
+                page_state.compounds_loaded = true;
+                page_state.compounds_loading = false;
+                page_state.error = None;
             }
             Err(error) => {
-                state.compounds_loading = false;
-                state.error = Some(format!("Could not load available compounds: {error}"));
+                page_state.compounds_loading = false;
+                page_state.error = Some(format!("Could not load available compounds: {error}"));
             }
         }
     }
@@ -150,7 +149,8 @@ pub fn poll_product_compound_load_results(
 
 pub fn poll_product_composition_load_results(
     results: ResMut<ProductCompositionLoadResults>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
         return;
@@ -160,12 +160,12 @@ pub fn poll_product_composition_load_results(
     };
     match result {
         Ok((generation, product_id, compounds)) => {
-            if state.composition_load_generation != generation || state.overlay != Some(ProductOverlay::Form { editing_id: Some(product_id) }) {
+            if page_state.composition_load_generation != generation || page_state.overlay != Some(ProductOverlay::Form { editing_id: Some(product_id) }) {
                 return;
             }
-            state.composition_loading = false;
+            page_state.composition_loading = false;
             let selected_compounds: Option<Vec<ProductCompositionEntry>> = compounds.into_iter().map(|compound| {
-                state.compounds.iter().find(|entry| entry.id == compound.compound_id).map(|entry| ProductCompositionEntry {
+                page_state.compounds.iter().find(|entry| entry.id == compound.compound_id).map(|entry| ProductCompositionEntry {
                     compound_id: compound.compound_id,
                     compound_name: entry.common_name.clone(),
                     compound_amount: compound.compound_amount.to_string(),
@@ -174,16 +174,16 @@ pub fn poll_product_composition_load_results(
             }).collect();
             match selected_compounds {
                 Some(compounds) => {
-                    state.selected_compounds = compounds;
+                    form_state.selected_compounds = compounds;
                 }
                 None => {
-                    state.error = Some("A compound in this product's composition could not be found.".to_string());
+                    page_state.error = Some("A compound in this product's composition could not be found.".to_string());
                 }
             }
         }
         Err(error) => {
-            state.composition_loading = false;
-            state.error = Some(error);
+            page_state.composition_loading = false;
+            page_state.error = Some(error);
         }
     }
 }
@@ -191,7 +191,8 @@ pub fn poll_product_composition_load_results(
 pub fn poll_product_save_results(
     mut form_overlay: Query<&mut Node, With<ProductFormOverlay>>,
     results: Res<ProductSaveResults>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
         return;
@@ -199,23 +200,22 @@ pub fn poll_product_save_results(
     let Ok(result) = receiver.try_recv() else {
         return;
     };
-    state.loading = false;
     match result {
         Ok(products) => {
-            state.products = products;
-            state.brand.clear();
-            state.description.clear();
-            state.name.clear();
-            state.route.clear();
-            state.selected_compounds.clear();
-            state.route_selector_open = false;
-            state.error = None;
+            page_state.products = products;
+            form_state.brand.clear();
+            form_state.description.clear();
+            form_state.name.clear();
+            form_state.route.clear();
+            form_state.selected_compounds.clear();
+            form_state.route_selector_open = false;
+            form_state.error = None;
             if let Ok(mut node) = form_overlay.single_mut() {
                 node.display = Display::None;
             }
         }
         Err(error) => {
-            state.error = Some(error);
+            form_state.error = Some(error);
         }
     }
 }

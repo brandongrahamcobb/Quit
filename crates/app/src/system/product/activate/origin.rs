@@ -20,35 +20,38 @@
 
 use bevy::prelude::*;
 use crate::page::AppPage;
-use crate::resource::product_resource::{ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductDeletionState, ProductFormState, ProductOverlay, ProductPageState};
 
 
 pub fn handle_product_escape(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut next_page: ResMut<NextState<AppPage>>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
+    mut deletion_state: ResMut<ProductDeletionState>,
 ) {
     if !keyboard.just_pressed(KeyCode::Escape) {
         return;
     }
-    match state.overlay {
+    match page_state.overlay {
         Some(ProductOverlay::Preview(_)) => {
-            state.overlay = None;
+            page_state.overlay = None;
         }
         Some(ProductOverlay::Delete(_)) => {
-            if state.deleting {
+            if deletion_state.deleting {
                 return;
             }
-            state.overlay = None;
-            state.deleting_name = None;
-            state.delete_error = None;
+            page_state.overlay = None;
+            deletion_state.name = None;
+            deletion_state.error = None;
         }
         Some(ProductOverlay::Form { .. }) => {
-            state.composition_load_generation = state.composition_load_generation.wrapping_add(1);
-            state.composition_loading = false;
-            state.composition_load_requested_id = None;
-            state.overlay = None;
-            state.error = None;
+            form_state.error = None;
+            page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
+            page_state.composition_loading = false;
+            page_state.composition_load_requested_id = None;
+            page_state.overlay = None;
+            page_state.error = None;
         }
         None => {
             next_page.set(AppPage::Dashboard);

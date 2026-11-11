@@ -26,11 +26,11 @@ use crate::resource::product_resource::{ProductOverlay, ProductPageState};
 pub fn view_product_preview(
     activate: On<Activate>,
     preview_buttons: Query<&ProductPreviewButton>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
 ) {
     let Ok(button) = preview_buttons.get(activate.entity) else {
         return;
     };
     let overlay = ProductOverlay::Preview(button.0);
-    state.overlay = if state.overlay == Some(overlay) { None } else { Some(overlay) };
+    page_state.overlay = if page_state.overlay == Some(overlay) { None } else { Some(overlay) };
 }

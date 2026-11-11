@@ -27,68 +27,69 @@ use db::product::model::{NewProductModel, ProductCompoundInput, UpdateProductMod
 use db::product::setters::{insert_product_with_compounds, update_product_with_compounds};
 use crate::component::product::{ProductBrandText, ProductCompositionRemoveButton, ProductCompositionSearchText, ProductCompositionUnitButton, ProductCompoundToggleButton, ProductDescriptionText, ProductEditButton, ProductNameText, ProductRouteOptionButton, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitOptionButton};
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductCompositionEntry, ProductEntry, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
+use crate::resource::product_resource::{ProductCompositionEntry, ProductEntry, ProductFormState, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
 
 pub fn cancel_save(
     _activate: On<Activate>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    if state.loading {
-        return;
-    }
-    state.overlay = None;
+    form_state.saving = false;
+    // could also reset to defaults here but add_product kindof takes care of it
+    page_state.overlay = None;
 }
 
 pub fn save_product(
     _activate: On<Activate>,
     database: Res<Database>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
     results: Res<ProductSaveResults>,
 ) {
-    if state.loading {
+    if form_state.saving {
         return;
     }
-    let editing_id = match state.overlay {
+    let editing_id = match page_state.overlay {
         Some(ProductOverlay::Form { editing_id }) => editing_id,
         _ => return,
     };
-    let name = state.name.trim().to_string();
-    let route = state.route.clone();
+    let name = form_state.name.trim().to_string();
+    let route = form_state.route.clone();
     if name.is_empty() {
-        state.error = Some("Product name is required.".to_string());
+        form_state.error = Some("Product name is required.".to_string());
         return;
     }
     if !base::product::PRODUCT_ROUTES.contains(&route.as_str()) {
-        state.error = Some("Select a valid route.".to_string());
+        form_state.error = Some("Select a valid route.".to_string());
         return;
     }
-    let Ok(serving_size) = state.serving_size.trim().parse::<BigDecimal>() else {
-        state.error = Some("Enter a valid serving size.".to_string());
+    let Ok(serving_size) = form_state.serving_size.trim().parse::<BigDecimal>() else {
+        form_state.error = Some("Enter a valid serving size.".to_string());
         return;
     };
     if serving_size <= BigDecimal::from(0) {
-        state.error = Some("Serving size must be greater than zero.".to_string());
+        form_state.error = Some("Serving size must be greater than zero.".to_string());
         return;
     }
-    if !["mg", "mL", "unit"].contains(&state.serving_unit.as_str()) {
-        state.error = Some("Select a valid serving unit.".to_string());
+    if !["mg", "mL", "unit"].contains(&form_state.serving_unit.as_str()) {
+        form_state.error = Some("Select a valid serving unit.".to_string());
         return;
     }
     let mut compounds = Vec::new();
-    for compound in &state.selected_compounds {
+    for compound in &form_state.selected_compounds {
         let Ok(amount) = compound.compound_amount.parse::<BigDecimal>() else {
-            state.error = Some(format!("Enter a valid amount for {}.", compound.compound_name));
+            form_state.error = Some(format!("Enter a valid amount for {}.", compound.compound_name));
             return;
         };
         if amount <= BigDecimal::from(0) {
-            state.error = Some(format!("Amount for {} must be greater than zero.", compound.compound_name));
+            form_state.error = Some(format!("Amount for {} must be greater than zero.", compound.compound_name));
             return;
         }
         if !["mg", "mL"].contains(&compound.compound_units.as_str()) {
-            state.error = Some(format!("Select a valid unit for {}.", compound.compound_name));
+            form_state.error = Some(format!("Select a valid unit for {}.", compound.compound_name));
             return;
         }
         compounds.push(ProductCompoundInput {
@@ -101,18 +102,18 @@ pub fn save_product(
         name,
         route,
         brand: {
-            let brand = state.brand.trim();
+            let brand = form_state.brand.trim();
             (!brand.is_empty()).then(|| brand.to_string())
         },
         description: {
-            let description = state.description.trim();
+            let description = form_state.description.trim();
             (!description.is_empty()).then(|| description.to_string())
         },
-        image_path: state.image_path.clone(),
+        image_path: form_state.image_path.clone(),
         serving_size,
-        serving_unit: state.serving_unit.clone(),
+        serving_unit: form_state.serving_unit.clone(),
         serving_description: {
-            let description = state.serving_description.trim();
+            let description = form_state.serving_description.trim();
             (!description.is_empty()).then(|| description.to_string())
         },
     };
@@ -128,8 +129,8 @@ pub fn save_product(
     };
     let pool = database.0.clone();
     let sender = results.sender.clone();
-    state.loading = true;
-    state.error = None;
+    form_state.error = None;
+    page_state.loading = true;
     thread::spawn(move || {
         let runtime = Builder::new_current_thread().enable_all().build().unwrap();
         let result = runtime.block_on(async move {
@@ -156,20 +157,20 @@ pub fn save_product(
         });
         let _ = sender.send(result.map_err(|error| error.to_string()));
     });
-    state.overlay = None;
+    page_state.overlay = None;
 }
 
 pub fn upload_product_image(
     _activate: On<Activate>,
     receiver: ResMut<ProductImageUploadReceiver>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    if state.image_loading {
+    if form_state.image_loading {
         return;
     }
     let (sender, channel_receiver) = channel();
     *receiver.0.lock().unwrap() = Some(channel_receiver);
-    state.image_loading = true;
+    form_state.image_loading = true;
     thread::spawn(move || {
         let result = (|| {
             let Some(source) = rfd::FileDialog::new()
@@ -206,10 +207,10 @@ pub fn upload_product_image(
 
 pub fn remove_product_image(
     _activate: On<Activate>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    state.image_path = None;
-    state.error = None;
+    form_state.image_path = None;
+    form_state.error = None;
 }
 
 pub fn edit_product(
@@ -223,32 +224,32 @@ pub fn edit_product(
         Query<&mut EditableText, With<ProductServingSizeText>>,
         Query<&mut EditableText, With<ProductCompositionSearchText>>,
     )>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = edit_buttons.get(activate.entity) else {
         return;
     };
-    let Some(product) = state.products.iter().find(|product| product.id == button.0).cloned() else {
+    let Some(product) = page_state.products.iter().find(|product| product.id == button.0).cloned() else {
         return;
     };
-    state.composition_load_generation = state.composition_load_generation.wrapping_add(1);
-    state.composition_loading = false;
-    state.composition_load_requested_id = None;
-    state.composition_search_query.clear();
-    state.composition_search_query_open = false;
-    state.name = product.name;
-    state.route = product.route;
-    state.brand = product.brand.unwrap_or_default();
-    state.description = product.description.unwrap_or_default();
-    state.selected_compounds.clear();
-    state.image_path = product.image_path;
-    state.serving_unit_selector_open = false;
-    state.serving_size = product.serving_size.to_string();
-    state.serving_unit = product.serving_unit.clone();
-    state.serving_description = product.serving_description.unwrap_or_default();
-    state.error = None;
-    state.overlay = Some(ProductOverlay::Form { editing_id: Some(product.id) });
-    fill_form(inputs, state);
+    form_state.brand = product.brand.unwrap_or_default();
+    form_state.composition_search_query.clear();
+    form_state.composition_search_query_open = false;
+    form_state.description = product.description.unwrap_or_default();
+    form_state.image_path = product.image_path;
+    form_state.name = product.name;
+    form_state.route = product.route;
+    form_state.selected_compounds.clear();
+    form_state.serving_unit_selector_open = false;
+    form_state.serving_size = product.serving_size.to_string();
+    form_state.serving_unit = product.serving_unit.clone();
+    form_state.serving_description = product.serving_description.unwrap_or_default();
+    page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
+    page_state.composition_loading = false;
+    page_state.composition_load_requested_id = None;
+    page_state.overlay = Some(ProductOverlay::Form { editing_id: Some(product.id) });
+    fill_form(inputs, form_state);
 }
 
 pub fn fill_form(
@@ -260,7 +261,7 @@ pub fn fill_form(
         Query<&mut EditableText, With<ProductServingSizeText>>,
         Query<&mut EditableText, With<ProductCompositionSearchText>>,
     )>,
-    state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     fn set_text(input: &mut EditableText, value: &str) {
         input.queue_edit(TextEdit::SelectAll);
@@ -270,14 +271,16 @@ pub fn fill_form(
             input.queue_edit(TextEdit::Insert(value.into()));
         }
     }
-    for mut i in &mut inputs.p2() { set_text(&mut i, &state.name); }
-    for mut i in &mut inputs.p0() { set_text(&mut i, &state.brand); }
-    for mut i in &mut inputs.p1() { set_text(&mut i, &state.description); }
-    for mut i in &mut inputs.p3() { set_text(&mut i, &state.serving_description); }
-    for mut i in &mut inputs.p4() { set_text(&mut i, &state.serving_size); }
+    for mut i in &mut inputs.p0() { set_text(&mut i, &form_state.brand); }
+    for mut i in &mut inputs.p1() { set_text(&mut i, &form_state.description); }
+    for mut i in &mut inputs.p2() { set_text(&mut i, &form_state.name); }
+    for mut i in &mut inputs.p3() { set_text(&mut i, &form_state.serving_description); }
+    for mut i in &mut inputs.p4() { set_text(&mut i, &form_state.serving_size); }
     for mut i in &mut inputs.p5() { set_text(&mut i, ""); }
+    form_state.error = None;
 }
 
+// this kindof does the work that cancel save does
 pub fn add_product(
     _activate: On<Activate>,
     inputs: ParamSet<(
@@ -288,61 +291,62 @@ pub fn add_product(
         Query<&mut EditableText, With<ProductServingSizeText>>,
         Query<&mut EditableText, With<ProductCompositionSearchText>>,
     )>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    state.composition_load_generation = state.composition_load_generation.wrapping_add(1);
-    state.composition_loading = false;
-    state.composition_load_requested_id = None;
-    state.composition_search_query.clear();
-    state.composition_search_query_open = false;
-    state.name.clear();
-    state.route.clear();
-    state.brand.clear();
-    state.description.clear();
-    state.selected_compounds.clear();
-    state.image_path = None;
-    state.serving_size = "1".to_string();
-    state.serving_unit = "unit".to_string();
-    state.serving_description.clear();
-    state.serving_unit_selector_open = false;
-    state.error = None;
-    state.overlay = Some(ProductOverlay::Form { editing_id: None });
-    fill_form(inputs, state);
+    form_state.brand.clear();
+    form_state.composition_search_query.clear();
+    form_state.composition_search_query_open = false;
+    form_state.description.clear();
+    form_state.image_path = None;
+    form_state.name.clear();
+    form_state.route.clear();
+    form_state.selected_compounds.clear();
+    form_state.serving_size = "1".to_string();
+    form_state.serving_unit = "unit".to_string();
+    form_state.serving_description.clear();
+    form_state.serving_unit_selector_open = false;
+    page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
+    page_state.composition_loading = false;
+    page_state.composition_load_requested_id = None;
+    page_state.overlay = Some(ProductOverlay::Form { editing_id: None });
+    fill_form(inputs, form_state);
 }
 
 
 pub fn toggle_product_composition(
     activate: On<Activate>,
     buttons: Query<&ProductCompoundToggleButton>,
-    mut state: ResMut<ProductPageState>,
+    page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
     let id = button.0;
-    if state.selected_compounds.iter().any(|compound| compound.compound_id == id) {
-        state.selected_compounds.retain(|compound| compound.compound_id != id);
-    } else if let Some(compound_name) = state.compounds.iter().find(|compound| compound.id == id).map(|compound| compound.common_name.clone()) {
-        state.selected_compounds.push(ProductCompositionEntry {
+    if form_state.selected_compounds.iter().any(|compound| compound.compound_id == id) {
+        form_state.selected_compounds.retain(|compound| compound.compound_id != id);
+    } else if let Some(compound_name) = page_state.compounds.iter().find(|compound| compound.id == id).map(|compound| compound.common_name.clone()) {
+        form_state.selected_compounds.push(ProductCompositionEntry {
             compound_id: id,
             compound_name,
             compound_amount: String::new(),
             compound_units: "mg".to_string(),
         });
     }
-    state.composition_search_query_open = false;
-    state.error = None;
+    form_state.composition_search_query_open = false;
+    form_state.error = None;
 }
 
 pub fn cycle_product_compound_units(
     activate: On<Activate>,
     buttons: Query<&ProductCompositionUnitButton>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
-    if let Some(compound) = state.selected_compounds.iter_mut().find(|compound| compound.compound_id == button.0) {
+    if let Some(compound) = form_state.selected_compounds.iter_mut().find(|compound| compound.compound_id == button.0) {
         compound.compound_units = match compound.compound_units.as_str() {
             "mg" => "mL".to_string(),
             _ => "mg".to_string(),
@@ -353,50 +357,50 @@ pub fn cycle_product_compound_units(
 pub fn select_product_route(
     activate: On<Activate>,
     buttons: Query<&ProductRouteOptionButton>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
-    state.route = button.0.clone();
-    state.route_selector_open = false;
-    state.error = None;
+    form_state.route = button.0.clone();
+    form_state.route_selector_open = false;
+    form_state.error = None;
 }
 
 pub fn remove_product_compound(
     activate: On<Activate>,
     buttons: Query<&ProductCompositionRemoveButton>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
-    state.selected_compounds.retain(|compound| compound.compound_id != button.0);
+    form_state.selected_compounds.retain(|compound| compound.compound_id != button.0);
 }
 
 pub fn select_product_serving_unit(
     activate: On<Activate>,
     buttons: Query<&ProductServingUnitOptionButton>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
-    state.serving_unit = button.0.clone();
-    state.serving_unit_selector_open = false;
-    state.error = None;
+    form_state.serving_unit = button.0.clone();
+    form_state.serving_unit_selector_open = false;
+    form_state.error = None;
 }
 
 pub fn toggle_product_route_dropdown(
     _: On<Activate>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    state.route_selector_open = !state.route_selector_open;
+    form_state.route_selector_open = !form_state.route_selector_open;
 }
 
 pub fn toggle_product_serving_unit_dropdown(
     _: On<Activate>,
-    mut state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
-    state.serving_unit_selector_open = !state.serving_unit_selector_open;
+    form_state.serving_unit_selector_open = !form_state.serving_unit_selector_open;
 }

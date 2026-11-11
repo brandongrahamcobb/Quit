@@ -27,34 +27,44 @@ use crate::resource::compound_resource::CompoundEntry;
 
 #[derive(Resource, Default)]
 pub struct ProductPageState {
-    pub products: Vec<ProductEntry>,
     pub compounds: Vec<CompoundEntry>,
-    pub name: String,
-    pub route: String,
-    pub brand: String,
-    pub description: String,
-    pub selected_compounds: Vec<ProductCompositionEntry>,
-    pub route_selector_open: bool,
-    pub error: Option<String>,
-    pub loading: bool,
-    pub search_query: String,
-    pub image_path: Option<String>,
-    pub image_loading: bool,
-    pub deleting_name: Option<String>,
-    pub delete_error: Option<String>,
-    pub deleting: bool,
-    pub compounds_loading: bool,
-    pub compounds_loaded: bool,
-    pub composition_loading: bool,
-    pub composition_load_requested_id: Option<i32>,
     pub composition_load_generation: u64,
+    pub composition_load_requested_id: Option<i32>,
+    pub composition_loading: bool,
+    pub compounds_loaded: bool,
+    pub compounds_loading: bool,
+    pub loading: bool,
+    pub products: Vec<ProductEntry>,
+    pub search_query: String,
+    pub overlay: Option<ProductOverlay>,
+    pub error: Option<String>,
+}
+
+#[derive(Resource, Default)]
+pub struct ProductFormState {
+    pub brand: String,
     pub composition_search_query: String,
     pub composition_search_query_open: bool,
+    pub description: String,
+    pub error: Option<String>,
+    pub image_loading: bool,
+    pub image_path: Option<String>,
+    pub name: String,
+    pub route: String,
+    pub route_selector_open: bool,
+    pub saving: bool,
+    pub selected_compounds: Vec<ProductCompositionEntry>,
+    pub serving_description: String,
     pub serving_size: String,
     pub serving_unit: String,
-    pub serving_description: String,
     pub serving_unit_selector_open: bool,
-    pub overlay: Option<ProductOverlay>,
+}
+
+#[derive(Resource, Default)]
+pub struct ProductDeletionState {
+    pub deleting: bool,
+    pub name: Option<String>,
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Debug)]

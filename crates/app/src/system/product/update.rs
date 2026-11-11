@@ -23,14 +23,15 @@ use bevy::prelude::*;
 use bevy::text::{EditableText, TextCursorStyle};
 use bevy::ui_widgets::{Button, TextInput};
 use crate::component::product::{ProductBrandText, ProductCompositionAmountText, ProductCompositionItem, ProductCompositionListContainer, ProductCompositionRemoveButton, ProductCompositionSearchText, ProductCompositionUnitButton, ProductCompoundChoiceText, ProductCompoundListContainer, ProductCompoundToggleButton, ProductDeleteButton, ProductDeleteDialog, ProductDeleteErrorText, ProductDeleteNameText, ProductDescriptionText, ProductEditButton, ProductErrorText, ProductFormOverlay, ProductImagePreview, ProductImagePreviewHandle, ProductListContainer, ProductListItem, ProductListText, ProductNameText, ProductPreviewButton, ProductPreviewContent, ProductPreviewImage, ProductPreviewOverlay, ProductPreviewPanel, ProductRouteOptionList, ProductSaveButton, ProductSaveButtonText, ProductSearchText, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitOptionList};
-use crate::resource::product_resource::{ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductDeletionState, ProductFormState, ProductOverlay, ProductPageState};
 use crate::system::product::activate::add_edit::{cycle_product_compound_units, edit_product, remove_product_compound, toggle_product_composition};
 use crate::system::product::activate::delete::delete_product;
 use crate::system::product::activate::preview::view_product_preview;
 
 pub fn update_product_compound_buttons(
     mut commands: Commands,
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
+    form_state: Res<ProductFormState>,
     list_container: Query<Entity, With<ProductCompoundListContainer>>,
     old_items: Query<Entity, With<ProductCompoundChoiceText>>,
     mut previous_signature: Local<Option<Vec<(i32, String, bool)>>>,
@@ -38,13 +39,13 @@ pub fn update_product_compound_buttons(
     let Ok(container) = list_container.single() else {
         return;
     };
-    let query = state.composition_search_query.to_lowercase();
-    let choices: Vec<(i32, String, bool)> = state.compounds.iter()
+    let query = form_state.composition_search_query.to_lowercase();
+    let choices: Vec<(i32, String, bool)> = page_state.compounds.iter()
         .filter(|compound| compound.common_name.to_lowercase().contains(&query))
         .map(|compound| (
             compound.id,
             compound.common_name.clone(),
-            state.selected_compounds.iter().any(|selected| selected.compound_id == compound.id),
+            form_state.selected_compounds.iter().any(|selected| selected.compound_id == compound.id),
         ))
         .collect();
     if previous_signature.as_ref() == Some(&choices) {
@@ -80,7 +81,7 @@ pub fn update_product_compound_buttons(
 
 pub fn update_product_composition_rows(
     mut commands: Commands,
-    state: Res<ProductPageState>,
+    form_state: Res<ProductFormState>,
     list_container: Query<Entity, With<ProductCompositionListContainer>>,
     old_items: Query<Entity, With<ProductCompositionItem>>,
     mut previous_signature: Local<Option<Vec<(i32, String, String)>>>
@@ -88,7 +89,7 @@ pub fn update_product_composition_rows(
     let Ok(container) = list_container.single() else {
         return;
     };
-    let signature: Vec<_> = state.selected_compounds.iter()
+    let signature: Vec<_> = form_state.selected_compounds.iter()
         .map(|compound| (
             compound.compound_id,
             compound.compound_name.clone(),
@@ -104,7 +105,7 @@ pub fn update_product_composition_rows(
     }
     commands.entity(container).with_children(|parent| {
         for (id, name, units) in signature {
-            let amount = state.selected_compounds.iter()
+            let amount = form_state.selected_compounds.iter()
                 .find(|compound| compound.compound_id == id)
                 .map(|compound| compound.compound_amount.clone())
                 .unwrap_or_default();
@@ -179,24 +180,24 @@ pub fn update_product_composition_rows(
 
 pub fn update_product_list(
     mut commands: Commands,
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
     mut list_texts: Query<&mut Text, With<ProductListText>>,
     containers: Query<Entity, With<ProductListContainer>>,
     old_items: Query<Entity, With<ProductListItem>>,
     mut rendered: Local<Option<(Entity, Vec<(i32, String, Option<String>)>, String)>>,
 ) {
-    let query = state.search_query.trim().to_lowercase();
-    let filtered: Vec<_> = state.products.iter()
+    let query = page_state.search_query.trim().to_lowercase();
+    let filtered: Vec<_> = page_state.products.iter()
         .filter(|product| product.name.to_lowercase().contains(&query))
         .collect();
-    let status = if let Some(error) = &state.error {
+    let status = if let Some(error) = &page_state.error {
         format!("Could not load products: {error}")
-    } else if state.loading {
+    } else if page_state.loading {
         "Loading products...".to_owned()
-    } else if state.products.is_empty() {
+    } else if page_state.products.is_empty() {
         "No products yet. Select Add Product to create one.".to_owned()
     } else {
-        format!("{} of {} products", filtered.len(), state.products.len())
+        format!("{} of {} products", filtered.len(), page_state.products.len())
     };
     for mut text in &mut list_texts {
         text.0 = status.clone();
@@ -282,7 +283,8 @@ pub fn update_product_list(
 }
 
 pub fn update_product_dropdowns(
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
+    form_state: Res<ProductFormState>,
     mut dropdowns: ParamSet<(
         Query<&mut Node, With<ProductRouteOptionList>>,
         Query<&mut Node, With<ProductServingUnitOptionList>>,
@@ -290,13 +292,13 @@ pub fn update_product_dropdowns(
     )>,
 ) {
     for mut node in &mut dropdowns.p0() {
-        node.display = if state.route_selector_open { Display::Flex } else { Display::None };
+        node.display = if form_state.route_selector_open { Display::Flex } else { Display::None };
     }
     for mut node in &mut dropdowns.p1() {
-        node.display = if state.serving_unit_selector_open { Display::Flex } else { Display::None };
+        node.display = if form_state.serving_unit_selector_open { Display::Flex } else { Display::None };
     }
-    let show = state.composition_search_query_open && matches!(state.overlay, Some(ProductOverlay::Form { .. }))
-        && !state.composition_search_query.is_empty();
+    let show = form_state.composition_search_query_open && matches!(page_state.overlay, Some(ProductOverlay::Form { .. }))
+        && !form_state.composition_search_query.is_empty();
     for mut node in &mut dropdowns.p2() {
         node.display = if show { Display::Flex } else { Display::None };
     }
@@ -306,35 +308,35 @@ pub fn update_product_save_ui(
     mut buttons: Query<(&Children, &mut BackgroundColor), With<ProductSaveButton>>,
     mut button_texts: Query<&mut Text, (With<ProductSaveButtonText>, Without<ProductErrorText>)>,
     mut error_texts: Query<&mut Text, (With<ProductErrorText>, Without<ProductSaveButtonText>)>,
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
 ) {
     for (children, mut background) in &mut buttons {
-        *background = BackgroundColor(if state.loading {
+        *background = BackgroundColor(if page_state.loading {
             Color::srgb(0.25, 0.27, 0.29)
         } else {
             Color::srgb(0.16, 0.38, 0.28)
         });
         for child in children.iter() {
             if let Ok(mut text) = button_texts.get_mut(child) {
-                text.0 = if state.loading { "Saving...".to_string() } else { "Save".to_string() };
+                text.0 = if page_state.loading { "Saving...".to_string() } else { "Save".to_string() };
             }
         }
     }
     for mut text in &mut error_texts {
-        text.0 = state.error.clone().unwrap_or_default();
+        text.0 = page_state.error.clone().unwrap_or_default();
     }
 }
 
 pub fn update_product_image_preview(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    state: Res<ProductPageState>,
+    form_state: Res<ProductFormState>,
     previews: Query<(Entity, Option<&ProductImagePreviewHandle>), With<ProductImagePreview>>,
 ) {
     let Ok((entity, current_handle)) = previews.single() else {
         return;
     };
-    let desired_path = state.image_path.as_deref();
+    let desired_path = form_state.image_path.as_deref();
     let current_path = current_handle.and_then(|component| component.0.path().map(|path| path.to_string()));
     if current_path.as_deref() == desired_path {
         return;
@@ -366,15 +368,15 @@ pub fn update_product_preview_image_sizes(
 }
 
 pub fn update_product_delete_dialog_text(
-    state: Res<ProductPageState>,
+    deletion_state: Res<ProductDeletionState>,
     mut error_text: Query<&mut Text, (With<ProductDeleteErrorText>, Without<ProductDeleteNameText>)>,
     mut name_text: Query<&mut Text, (With<ProductDeleteNameText>, Without<ProductDeleteErrorText>)>,
 ) {
     for mut text in &mut error_text {
-        text.0 = state.delete_error.clone().unwrap_or_default();
+        text.0 = deletion_state.error.clone().unwrap_or_default();
     }
     for mut text in &mut name_text {
-        text.0 = state.deleting_name.as_ref().map(|name| format!("Are you sure you want to delete {}?", name)).unwrap_or_default();
+        text.0 = deletion_state.name.as_ref().map(|name| format!("Are you sure you want to delete {}?", name)).unwrap_or_default();
     }
 }
 
@@ -383,10 +385,10 @@ pub fn update_product_preview(
     asset_server: Res<AssetServer>,
     panels: Query<Entity, With<ProductPreviewPanel>>,
     children: Query<Entity, With<ProductPreviewContent>>,
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
     mut rendered: Local<Option<(i32, Option<String>)>>,
 ) {
-    let Some(ProductOverlay::Preview(id)) = state.overlay else {
+    let Some(ProductOverlay::Preview(id)) = page_state.overlay else {
         if rendered.is_some() {
             for entity in &children {
                 commands.entity(entity).despawn();
@@ -395,7 +397,7 @@ pub fn update_product_preview(
         }
         return;
     };
-    let Some(product) = state.products.iter().find(|product| product.id == id) else {
+    let Some(product) = page_state.products.iter().find(|product| product.id == id) else {
         return;
     };
     let signature = (id, product.image_path.clone());
@@ -447,39 +449,40 @@ pub fn update_product_fields(
     serving_size_inputs: Query<&EditableText, With<ProductServingSizeText>>,
     composition_amount_inputs: Query<(&EditableText, &ProductCompositionAmountText)>,
     composition_search_inputs: Query<&EditableText, With<ProductCompositionSearchText>>,
-    mut state: ResMut<ProductPageState>,
+    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     for input in &search_inputs {
-        state.search_query = input.value().to_string();
+        page_state.search_query = input.value().to_string();
     }
     for input in &composition_search_inputs {
         let value = input.value().to_string();
-        if value != state.composition_search_query {
-            state.composition_search_query_open = !value.is_empty();
-            state.composition_search_query = value;
+        if value != form_state.composition_search_query {
+            form_state.composition_search_query_open = !value.is_empty();
+            form_state.composition_search_query = value;
         }
     }
-    if !matches!(state.overlay, Some(ProductOverlay::Form { .. })) {
+    if !matches!(page_state.overlay, Some(ProductOverlay::Form { .. })) {
         return;
     }
     for input in &brand_inputs {
-        state.brand = input.value().to_string();
+        form_state.brand = input.value().to_string();
     }
     for input in &description_inputs {
-        state.description = input.value().to_string();
+        form_state.description = input.value().to_string();
     }
     for input in &name_inputs {
-        state.name = input.value().to_string();
+        form_state.name = input.value().to_string();
     }
     for input in &serving_description_inputs {
-        state.serving_description = input.value().to_string();
+        form_state.serving_description = input.value().to_string();
     }
     for input in &serving_size_inputs {
-        state.serving_size = input.value().to_string();
+        form_state.serving_size = input.value().to_string();
     }
     for (input, amount_text) in &composition_amount_inputs {
         let value = input.value().to_string();
-        if let Some(compound) = state.selected_compounds.iter_mut().find(|compound| compound.compound_id == amount_text.0) {
+        if let Some(compound) = form_state.selected_compounds.iter_mut().find(|compound| compound.compound_id == amount_text.0) {
             compound.compound_amount = value;
         }
     }
@@ -491,11 +494,11 @@ pub fn update_product_overlays(
         Query<&mut Node, With<ProductDeleteDialog>>,
         Query<&mut Node, With<ProductPreviewOverlay>>,
     )>,
-    state: Res<ProductPageState>,
+    page_state: Res<ProductPageState>,
 ) {
-    let show_form = matches!(state.overlay, Some(ProductOverlay::Form { .. }));
-    let show_delete = matches!(state.overlay, Some(ProductOverlay::Delete(_)));
-    let show_preview = matches!(state.overlay, Some(ProductOverlay::Preview(_)));
+    let show_form = matches!(page_state.overlay, Some(ProductOverlay::Form { .. }));
+    let show_delete = matches!(page_state.overlay, Some(ProductOverlay::Delete(_)));
+    let show_preview = matches!(page_state.overlay, Some(ProductOverlay::Preview(_)));
     for mut node in &mut overlays.p0() {
         node.display = if show_form { Display::Flex } else { Display::None };
     }
