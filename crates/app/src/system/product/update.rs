@@ -40,7 +40,7 @@ pub fn update_product_compound_buttons(
         return;
     };
     let query = form_state.composition_search_query.to_lowercase();
-    let choices: Vec<(i32, String, bool)> = page_state.compounds.iter()
+    let choices: Vec<(i32, String, bool)> = form_state.compounds.iter()
         .filter(|compound| compound.common_name.to_lowercase().contains(&query))
         .map(|compound| (
             compound.id,
@@ -192,7 +192,7 @@ pub fn update_product_list(
         .collect();
     let status = if let Some(error) = &page_state.error {
         format!("Could not load products: {error}")
-    } else if page_state.loading {
+    } else if page_state.loading_products {
         "Loading products...".to_owned()
     } else if page_state.products.is_empty() {
         "No products yet. Select Add Product to create one.".to_owned()
@@ -308,22 +308,22 @@ pub fn update_product_save_ui(
     mut buttons: Query<(&Children, &mut BackgroundColor), With<ProductSaveButton>>,
     mut button_texts: Query<&mut Text, (With<ProductSaveButtonText>, Without<ProductErrorText>)>,
     mut error_texts: Query<&mut Text, (With<ProductErrorText>, Without<ProductSaveButtonText>)>,
-    page_state: Res<ProductPageState>,
+    form_state: Res<ProductFormState>,
 ) {
     for (children, mut background) in &mut buttons {
-        *background = BackgroundColor(if page_state.loading {
+        *background = BackgroundColor(if form_state.saving {
             Color::srgb(0.25, 0.27, 0.29)
         } else {
             Color::srgb(0.16, 0.38, 0.28)
         });
         for child in children.iter() {
             if let Ok(mut text) = button_texts.get_mut(child) {
-                text.0 = if page_state.loading { "Saving...".to_string() } else { "Save".to_string() };
+                text.0 = if form_state.saving { "Saving...".to_string() } else { "Save".to_string() };
             }
         }
     }
     for mut text in &mut error_texts {
-        text.0 = page_state.error.clone().unwrap_or_default();
+        text.0 = form_state.error.clone().unwrap_or_default();
     }
 }
 

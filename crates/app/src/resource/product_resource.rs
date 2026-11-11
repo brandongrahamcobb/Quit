@@ -27,13 +27,7 @@ use crate::resource::compound_resource::CompoundEntry;
 
 #[derive(Resource, Default)]
 pub struct ProductPageState {
-    pub compounds: Vec<CompoundEntry>,
-    pub composition_load_generation: u64,
-    pub composition_load_requested_id: Option<i32>,
-    pub composition_loading: bool,
-    pub compounds_loaded: bool,
-    pub compounds_loading: bool,
-    pub loading: bool,
+    pub loading_products: bool,
     pub products: Vec<ProductEntry>,
     pub search_query: String,
     pub overlay: Option<ProductOverlay>,
@@ -43,12 +37,14 @@ pub struct ProductPageState {
 #[derive(Resource, Default)]
 pub struct ProductFormState {
     pub brand: String,
+    pub compounds: Vec<CompoundEntry>,
     pub composition_search_query: String,
     pub composition_search_query_open: bool,
     pub description: String,
     pub error: Option<String>,
-    pub image_loading: bool,
     pub image_path: Option<String>,
+    pub loading_composition: bool,
+    pub loading_compounds: bool,
     pub name: String,
     pub route: String,
     pub route_selector_open: bool,
@@ -58,6 +54,7 @@ pub struct ProductFormState {
     pub serving_size: String,
     pub serving_unit: String,
     pub serving_unit_selector_open: bool,
+    pub uploading_image: bool,
 }
 
 #[derive(Resource, Default)]
@@ -137,8 +134,8 @@ impl Default for ProductCompoundLoadResults {
 
 #[derive(Resource)]
 pub struct ProductCompositionLoadResults {
-    pub sender: Sender<Result<(u64, i32, Vec<ProductCompoundModel>), String>>,
-    pub receiver: Mutex<Receiver<Result<(u64, i32, Vec<ProductCompoundModel>), String>>>,
+    pub sender: Sender<(i32, Result<Vec<ProductCompoundModel>, String>)>,
+    pub receiver: Mutex<Receiver<(i32, Result<Vec<ProductCompoundModel>, String>)>>,
 }
 impl Default for ProductCompositionLoadResults {
     fn default() -> Self {

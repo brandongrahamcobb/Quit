@@ -130,7 +130,6 @@ pub fn save_product(
     let pool = database.0.clone();
     let sender = results.sender.clone();
     form_state.error = None;
-    page_state.loading = true;
     thread::spawn(move || {
         let runtime = Builder::new_current_thread().enable_all().build().unwrap();
         let result = runtime.block_on(async move {
@@ -165,12 +164,12 @@ pub fn upload_product_image(
     receiver: ResMut<ProductImageUploadReceiver>,
     mut form_state: ResMut<ProductFormState>,
 ) {
-    if form_state.image_loading {
+    if form_state.uploading_image {
         return;
     }
     let (sender, channel_receiver) = channel();
     *receiver.0.lock().unwrap() = Some(channel_receiver);
-    form_state.image_loading = true;
+    form_state.uploading_image = true;
     thread::spawn(move || {
         let result = (|| {
             let Some(source) = rfd::FileDialog::new()
@@ -245,11 +244,8 @@ pub fn edit_product(
     form_state.serving_size = product.serving_size.to_string();
     form_state.serving_unit = product.serving_unit.clone();
     form_state.serving_description = product.serving_description.unwrap_or_default();
-    page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
-    page_state.composition_loading = false;
-    page_state.composition_load_requested_id = None;
-    page_state.overlay = Some(ProductOverlay::Form { editing_id: Some(product.id) });
     fill_form(inputs, form_state);
+    page_state.overlay = Some(ProductOverlay::Form { editing_id: Some(product.id) });
 }
 
 pub fn fill_form(
@@ -306,18 +302,14 @@ pub fn add_product(
     form_state.serving_unit = "unit".to_string();
     form_state.serving_description.clear();
     form_state.serving_unit_selector_open = false;
-    page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
-    page_state.composition_loading = false;
-    page_state.composition_load_requested_id = None;
-    page_state.overlay = Some(ProductOverlay::Form { editing_id: None });
     fill_form(inputs, form_state);
+    page_state.overlay = Some(ProductOverlay::Form { editing_id: None });
 }
 
 
 pub fn toggle_product_composition(
     activate: On<Activate>,
     buttons: Query<&ProductCompoundToggleButton>,
-    page_state: ResMut<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(button) = buttons.get(activate.entity) else {
@@ -326,7 +318,7 @@ pub fn toggle_product_composition(
     let id = button.0;
     if form_state.selected_compounds.iter().any(|compound| compound.compound_id == id) {
         form_state.selected_compounds.retain(|compound| compound.compound_id != id);
-    } else if let Some(compound_name) = page_state.compounds.iter().find(|compound| compound.id == id).map(|compound| compound.common_name.clone()) {
+    } else if let Some(compound_name) = form_state.compounds.iter().find(|compound| compound.id == id).map(|compound| compound.common_name.clone()) {
         form_state.selected_compounds.push(ProductCompositionEntry {
             compound_id: id,
             compound_name,

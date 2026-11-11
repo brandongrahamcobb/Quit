@@ -46,12 +46,11 @@ pub fn handle_product_escape(
             deletion_state.error = None;
         }
         Some(ProductOverlay::Form { .. }) => {
-            form_state.error = None;
-            page_state.composition_load_generation = page_state.composition_load_generation.wrapping_add(1);
-            page_state.composition_loading = false;
-            page_state.composition_load_requested_id = None;
+            if form_state.loading_compounds || form_state.loading_composition || form_state.saving {
+                return;
+            }
             page_state.overlay = None;
-            page_state.error = None;
+            form_state.error = None;
         }
         None => {
             next_page.set(AppPage::Dashboard);

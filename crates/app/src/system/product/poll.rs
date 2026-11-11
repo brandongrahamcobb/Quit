@@ -46,7 +46,7 @@ pub fn poll_product_load(receiver: Res<ProductLoadReceiver>, mut page_state: Res
     let Some(result) = result else {
         return;
     };
-    page_state.loading = false;
+    page_state.loading_products = false;
     match result {
         Ok(products) => {
             page_state.products = products;
@@ -80,7 +80,7 @@ pub fn poll_product_image_upload(
         }
     };
     if let Some(result) = result {
-        form_state.image_loading = false;
+        form_state.uploading_image = false;
         match result {
             Ok(Some(path)) => {
                 form_state.image_path = Some(path);
@@ -125,23 +125,20 @@ pub fn poll_product_delete_results(
 
 pub fn poll_product_compound_load_results(
     results: Res<ProductCompoundLoadResults>,
-    mut page_state: ResMut<ProductPageState>,
+    mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
         return;
     };
     while let Ok(result) = receiver.try_recv() {
-        page_state.compounds_loading = false;
+        form_state.loading_compounds = false;
         match result {
             Ok(compounds) => {
-                page_state.compounds = compounds;
-                page_state.compounds_loaded = true;
-                page_state.compounds_loading = false;
-                page_state.error = None;
+                form_state.compounds = compounds;
+                form_state.error = None;
             }
             Err(error) => {
-                page_state.compounds_loading = false;
-                page_state.error = Some(format!("Could not load available compounds: {error}"));
+                form_state.error = Some(format!("Could not load available compounds: {error}"));
             }
         }
     }
@@ -149,23 +146,23 @@ pub fn poll_product_compound_load_results(
 
 pub fn poll_product_composition_load_results(
     results: ResMut<ProductCompositionLoadResults>,
-    mut page_state: ResMut<ProductPageState>,
+    page_state: Res<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
 ) {
     let Ok(receiver) = results.receiver.lock() else {
         return;
     };
-    let Ok(result) = receiver.try_recv() else {
+    let Ok((product_id, result)) = receiver.try_recv() else {
         return;
     };
+    form_state.loading_composition = false;
+    if page_state.overlay != Some(ProductOverlay::Form { editing_id: Some(product_id) }) {
+        return;
+    }
     match result {
-        Ok((generation, product_id, compounds)) => {
-            if page_state.composition_load_generation != generation || page_state.overlay != Some(ProductOverlay::Form { editing_id: Some(product_id) }) {
-                return;
-            }
-            page_state.composition_loading = false;
+        Ok(compounds) => {
             let selected_compounds: Option<Vec<ProductCompositionEntry>> = compounds.into_iter().map(|compound| {
-                page_state.compounds.iter().find(|entry| entry.id == compound.compound_id).map(|entry| ProductCompositionEntry {
+                form_state.compounds.iter().find(|entry| entry.id == compound.compound_id).map(|entry| ProductCompositionEntry {
                     compound_id: compound.compound_id,
                     compound_name: entry.common_name.clone(),
                     compound_amount: compound.compound_amount.to_string(),
@@ -177,13 +174,12 @@ pub fn poll_product_composition_load_results(
                     form_state.selected_compounds = compounds;
                 }
                 None => {
-                    page_state.error = Some("A compound in this product's composition could not be found.".to_string());
+                    form_state.error = Some("A compound in this product's composition could not be found.".to_string());
                 }
             }
         }
         Err(error) => {
-            page_state.composition_loading = false;
-            page_state.error = Some(error);
+            form_state.error = Some(error);
         }
     }
 }
