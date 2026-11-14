@@ -103,39 +103,14 @@ impl Default for CalendarEntryLoadResults {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum EntryFormField {
-    #[default]
-    Product,
-    Time,
-    Amount,
-}
-
-#[derive(Resource)]
-pub struct CalendarEntryForm {
-    pub open: bool,
+#[derive(Default, Resource)]
+pub struct CalendarFormState {
     pub time: String,
     pub product_id: Option<i32>,
-    pub product_selector_open: bool,
-    pub amount: String,
-    pub amount_unit: String,
-    pub focused: EntryFormField,
+    pub product_search_query: Option<String>,
+    pub product_search_query_open: bool,
+    pub servings: Option<f32>,
     pub error: Option<String>,
-}
-
-impl Default for CalendarEntryForm {
-    fn default() -> Self {
-        Self {
-            open: false,
-            time: Local::now().format("%H:%M").to_string(),
-            product_id: None,
-            product_selector_open: false,
-            amount: "1".to_string(),
-            amount_unit: "unit".to_string(),
-            focused: EntryFormField::default(),
-            error: None,
-        }
-    }
 }
 
 pub type CalendarEntrySaveResult =

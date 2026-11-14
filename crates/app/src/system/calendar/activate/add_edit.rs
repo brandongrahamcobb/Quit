@@ -18,24 +18,29 @@
  */
 
 
-use bevy::input::ButtonState;
-use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::text::EditableText;
 use bevy::ui_widgets::Activate;
-use bigdecimal::BigDecimal;
-use chrono::{Local, NaiveTime};
-use crate::component::calendar::{
-    CalendarEntryAmountField, CalendarEntryAmountUnitButton, 
-};
-use crate::component::entry::{CalendarAddEntryButton, CalendarEntryCloseButton, CalendarEntryModal, CalendarEntryProductButton, CalendarEntryProductList, CalendarEntryProductOption, CalendarEntrySaveButton, CalendarEntryTimeField};
-use crate::resource::calendar_resource::{
-    CalendarEntryForm, CalendarEntrySaveResults, CalendarProducts, CalendarPageState, EntryFormField, 
-};
-use crate::resource::custom_resource::Database;
-use crate::resource::login_resource::AuthenticatedAccount;
-use std::thread;
-use std::time::SystemTime;
-use tokio::runtime::Builder;
+
+use crate::{component::calendar::{CalendarFormProductSearchText, CalendarFormServingsText, CalendarFormTimeText}, resource::calendar_resource::{CalendarFormState, CalendarOverlay, CalendarPageState}};
+
+pub fn add_product(
+    _activate: On<Activate>,
+    inputs: ParamSet<(
+        Query<&mut EditableText, With<CalendarFormServingsText>>,
+        Query<&mut EditableText, With<CalendarFormTimeText>>,
+        Query<&mut EditableText, With<CalendarFormProductSearchText>>,
+    )>,
+    mut page_state: ResMut<CalendarPageState>,
+    mut form_state: ResMut<CalendarFormState>,
+) {
+    form_state.product_id = None;
+    form_state.product_search_query = None;
+    form_state.product_search_query_open = false;
+    form_state.time = chrono::Local::now().format("%H:%M").to_string();
+    form_state.servings = Some(1.0);
+    page_state.overlay = Some(CalendarOverlay::Form { editing_id: None });
+}
 
 // pub fn edit_calendar_entry_fields(
 //     mut amount_fields: Query<&mut Text, With<CalendarEntryAmountField>>,

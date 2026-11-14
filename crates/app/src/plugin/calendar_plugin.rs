@@ -19,12 +19,12 @@
 use bevy::prelude::*;
 
 use crate::page::AppPage;
-use crate::resource::calendar_resource::{CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarPageState};
+use crate::resource::calendar_resource::{CalendarEntries, CalendarFormState, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts, CalendarPageState};
 use crate::system::calendar::activate::origin::handle_calendar_escape;
 use crate::system::calendar::load::{begin_calendar_entries_load, begin_calendar_product_load};
-use crate::system::calendar::poll::{poll_calendar_entry_load_results, poll_calendar_entry_save_results, poll_calendar_product_load};
+use crate::system::calendar::poll::{poll_calendar_entry_load_results, poll_calendar_product_load};
 use crate::system::calendar::spawn::spawn_calendar_navigation;
-use crate::system::calendar::update::{update_calendar_entries_text, update_calendar_entry_error, update_calendar_page, update_calendar_period_title, update_calendar_product_options};
+use crate::system::calendar::update::{update_calendar_entries_text, update_calendar_entry_error, update_calendar_month_cells, update_calendar_period_title, update_calendar_product_options, update_calendar_view_buttons, update_calendar_view_visibility, update_calendar_week_headings};
 
 pub struct CalendarPlugin;
 
@@ -34,7 +34,7 @@ impl Plugin for CalendarPlugin {
             .init_resource::<CalendarPageState>()
             .init_resource::<CalendarEntries>()
             .init_resource::<CalendarEntryLoadResults>()
-            .init_resource::<CalendarEntryForm>()
+            .init_resource::<CalendarFormState>()
             .init_resource::<CalendarEntrySaveResults>()
             .init_resource::<CalendarProducts>()
             .init_resource::<CalendarProductLoadReceiver>()
@@ -58,7 +58,6 @@ impl Plugin for CalendarPlugin {
                 (
                     poll_calendar_product_load,
                     poll_calendar_entry_load_results,
-                    poll_calendar_entry_save_results,
                 )
                 .chain().run_if(in_state(AppPage::Calendar))
             )
@@ -69,7 +68,10 @@ impl Plugin for CalendarPlugin {
                     update_calendar_product_options,
                     update_calendar_entry_error,
                     update_calendar_period_title,
-                    update_calendar_page 
+                    update_calendar_month_cells,
+                    update_calendar_view_buttons,
+                    update_calendar_view_visibility,
+                    update_calendar_week_headings,
                 )
                 .chain().run_if(in_state(AppPage::Calendar)),
             )

@@ -22,7 +22,7 @@ use bevy::prelude::*;
 use chrono::Local;
 use crate::component::entry::{CalendarEntryModal, CalendarEntryProductButton, CalendarEntryProductList};
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarEntryForm, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts,
+    CalendarEntries, CalendarFormState, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts,
 };
 use crate::resource::login_resource::AuthenticatedAccount;
 use std::sync::mpsc::TryRecvError;
@@ -63,53 +63,53 @@ pub fn poll_calendar_entry_load_results(
     }
 }
 
-pub fn poll_calendar_entry_save_results(
-    results: Res<CalendarEntrySaveResults>,
-    account: Res<AuthenticatedAccount>,
-    mut form: ResMut<CalendarEntryForm>,
-    mut entries: ResMut<CalendarEntries>,
-    mut lists: Query<&mut Node, (With<CalendarEntryProductList>, Without<CalendarEntryModal>)>,
-    mut modals: Query<&mut Node, (With<CalendarEntryModal>, Without<CalendarEntryProductList>)>,
-    mut product_buttons: Query<&mut Text, With<CalendarEntryProductButton>>,
-) {
-    let receiver = match results.receiver.lock() {
-        Ok(receiver) => receiver,
-        Err(error) => {
-            form.error = Some(error.to_string());
-            return;
-        }
-    };
-    loop {
-        match receiver.try_recv() {
-            Ok((acc_id, _date, result)) if acc_id == account.id => match result {
-                Ok(_) => {
-                    form.open = false;
-                    form.product_id = None;
-                    form.product_selector_open = false;
-                    form.time = Local::now().format("%H:%M").to_string();
-                    form.amount = "1".to_string();
-                    form.amount_unit = "unit".to_string();
-                    form.error = None;
-                    entries.requested_date = None;
-                    for mut node in &mut modals {
-                        node.display = Display::None;
-                    }
-                    for mut node in &mut lists {
-                        node.display = Display::None;
-                    }
-                    for mut text in &mut product_buttons {
-                        **text = "Product: Select product".to_string();
-                    }
-                }
-                Err(error) => {
-                    form.error = Some(error);
-                }
-            },
-            Ok(_) => {}
-            Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
-        }
-    }
-}
+// pub fn poll_calendar_form_save_results(
+//     results: Res<CalendarEntrySaveResults>,
+//     account: Res<AuthenticatedAccount>,
+//     mut form: ResMut<CalendarFormState>,
+//     mut entries: ResMut<CalendarEntries>,
+//     mut lists: Query<&mut Node, (With<CalendarEntryProductList>, Without<CalendarEntryModal>)>,
+//     mut modals: Query<&mut Node, (With<CalendarEntryModal>, Without<CalendarEntryProductList>)>,
+//     mut product_buttons: Query<&mut Text, With<CalendarEntryProductButton>>,
+// ) {
+//     let receiver = match results.receiver.lock() {
+//         Ok(receiver) => receiver,
+//         Err(error) => {
+//             form.error = Some(error.to_string());
+//             return;
+//         }
+//     };
+//     loop {
+//         match receiver.try_recv() {
+//             Ok((acc_id, _date, result)) if acc_id == account.id => match result {
+//                 Ok(_) => {
+//                     form.open = false;
+//                     form.product_id = None;
+//                     form.product_selector_open = false;
+//                     form.time = Local::now().format("%H:%M").to_string();
+//                     form.amount = "1".to_string();
+//                     form.amount_unit = "unit".to_string();
+//                     form.error = None;
+//                     entries.requested_date = None;
+//                     for mut node in &mut modals {
+//                         node.display = Display::None;
+//                     }
+//                     for mut node in &mut lists {
+//                         node.display = Display::None;
+//                     }
+//                     for mut text in &mut product_buttons {
+//                         **text = "Product: Select product".to_string();
+//                     }
+//                 }
+//                 Err(error) => {
+//                     form.error = Some(error);
+//                 }
+//             },
+//             Ok(_) => {}
+//             Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
+//         }
+//     }
+// }
 
 pub fn poll_calendar_product_load(receiver: Res<CalendarProductLoadReceiver>, mut products: ResMut<CalendarProducts>) {
     let result = {

@@ -137,26 +137,13 @@ pub fn handle_cell_button(
     calendar.visible_date = cell.date;
 }
 
-// pub fn focus_calendar_entry_field(
-//     mut amount_fields: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryAmountField>)>,
-//     mut fields: Query<&Interaction, (Changed<Interaction>, With<CalendarEntryTimeField>)>,
-//     mut form: ResMut<CalendarEntryForm>,
-// ) {
-//     if !form.open {
-//         return;
-//     }
-//     for interaction in &mut amount_fields {
-//         if *interaction == Interaction::Pressed {
-//             form.focused = EntryFormField::Amount;
-//         }
-//     }
-//     for interaction in &mut fields {
-//         if *interaction == Interaction::Pressed {
-//             form.focused = EntryFormField::Time;
-//         }
-//     }
-// }
-
-
-
-
+pub fn debug_calendar_state(calendar: Res<CalendarPageState>) {
+    if calendar.is_changed() {
+        info!(
+            "Calendar changed: view={:?}, visible_date={}, selected_date={}",
+            calendar.view,
+            calendar.visible_date,
+            calendar.selected_date
+        );
+    }
+}

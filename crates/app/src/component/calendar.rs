@@ -57,9 +57,50 @@ pub struct CalendarDateCell {
 }
 
 #[derive(Component)]
-pub struct CalendarEntryAmountField;
+pub struct CalendarFormServingsText;
 
 #[derive(Component)]
-pub struct CalendarEntryAmountUnitButton;
+pub struct CalendarFormTimeText;
+
+#[derive(Component)]
+pub struct CalendarFormProductSearchText;
+
+#[derive(Component)]
+pub struct CalendarFormProductListContainer;
+
+#[derive(Component)]
+pub struct CalendarFormOverlay;
+
+#[derive(Component)]
+pub struct CalendarFormRoot;
+
+#[derive(Component)]
+pub struct CalendarDeleteDialog;
+
+#[derive(Component)]
+pub struct CalendarDashboardButton;
+
+#[derive(Component)]
+pub struct CalendarDateCellText;
+
+#[derive(Component)]
+pub struct CalendarMonthContainer;
+
+#[derive(Component)]
+pub struct CalendarWeekContainer;
+
+#[derive(Component)]
+pub struct CalendarDayContainer;
+
+#[derive(Component)]
+pub struct CalendarWeekDateText;
+
+#[derive(Component)]
+pub struct CalendarWeekDateCell(pub usize);
+
+#[derive(Component)]
+pub struct CalendarMonthDateCell(pub usize);
+
+
 
 

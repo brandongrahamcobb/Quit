@@ -19,11 +19,11 @@
 
 use bevy::prelude::*;
 use bevy::ui_widgets::Button;
-use chrono::Local;
-use crate::component::calendar::{CalendarNavigationRoot, CalendarPeriodTitle};
+use chrono::{Datelike, Days, Local};
+use crate::component::calendar::{CalendarDateCell, CalendarDateCellText, CalendarDayContainer, CalendarDayViewButton, CalendarDeleteDialog, CalendarFormOverlay, CalendarMonthContainer, CalendarMonthDateCell, CalendarMonthViewButton, CalendarNavigationRoot, CalendarPeriodTitle, CalendarWeekContainer, CalendarWeekDateCell, CalendarWeekDateText, CalendarWeekViewButton};
 use crate::component::entry::{CalendarEntriesText, CalendarEntryErrorText, CalendarEntryProductList, CalendarEntryProductOption};
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarEntryForm, CalendarProducts, CalendarPageState, 
+    CalendarEntries, CalendarFormState, CalendarOverlay, CalendarPageState, CalendarProducts, CalendarView, 
 };
 use crate::system::calendar::helper::calendar_period_label;
 use crate::system::calendar::spawn::spawn_calendar_navigation;
@@ -67,9 +67,12 @@ pub fn update_calendar_entries_text(
 }
 
 pub fn update_calendar_entry_error(
-    form: Res<CalendarEntryForm>,
+    form: Res<CalendarFormState>,
     mut texts: Query<&mut Text, With<CalendarEntryErrorText>>,
 ) {
+    if !form.is_changed() {
+        return;
+    }
     let error = form.error.as_deref().unwrap_or("");
     for mut text in &mut texts {
         text.0 = error.to_owned();
@@ -114,16 +117,131 @@ pub fn update_calendar_product_options(
     }
 }
 
-pub fn update_calendar_page(
-    mut commands: Commands,
+pub fn update_calendar_overlays(
+    mut overlays: ParamSet<(
+        Query<&mut Node, With<CalendarFormOverlay>>,
+        Query<&mut Node, With<CalendarDeleteDialog>>,
+    )>,
+    page_state: Res<CalendarPageState>,
+) {
+    let show_form = matches!(page_state.overlay, Some(CalendarOverlay::Form { .. }));
+    let show_delete = matches!(page_state.overlay, Some(CalendarOverlay::Delete(_)));
+    for mut node in &mut overlays.p0() {
+        node.display = if show_form { Display::Flex } else { Display::None };
+    }
+    for mut node in &mut overlays.p1() {
+        node.display = if show_delete { Display::Flex } else { Display::None };
+    }
+}
+
+pub fn update_calendar_month_cells(
     calendar: Res<CalendarPageState>,
-    roots: Query<Entity, With<CalendarNavigationRoot>>,
+    mut cells: Query<(&mut CalendarDateCell, &mut BackgroundColor, &Children, &CalendarMonthDateCell)>,
+    mut texts: Query<&mut Text, With<CalendarDateCellText>>,
+    mut text_colors: Query<&mut TextColor, With<CalendarDateCellText>>,
 ) {
     if !calendar.is_changed() {
         return;
     }
-    for root in &roots {
-        commands.entity(root).despawn();
+    if calendar.view != CalendarView::Month {
+        return;
     }
-    spawn_calendar_navigation(commands, calendar);
+    let dates = calendar.month_grid_dates();
+    let visible_month = calendar.visible_date.month();
+    let visible_year = calendar.visible_date.year();
+    for (mut cell, mut background, children, index) in &mut cells {
+        let Some(date) = dates.get(index.0) else { continue; };
+        cell.date = *date;
+        cell.in_visible_month = date.month() == visible_month && date.year() == visible_year;
+        *background = BackgroundColor(if *date == calendar.selected_date {
+            Color::srgb(0.16, 0.34, 0.38)
+        } else {
+            Color::srgb(0.11, 0.14, 0.16)
+        });
+        for child in children.iter() {
+            if let Ok(mut text) = texts.get_mut(child) {
+                text.0 = date.day().to_string();
+            }
+            if let Ok(mut color) = text_colors.get_mut(child) {
+                color.0 = if cell.in_visible_month {
+                    Color::WHITE
+                } else {
+                    Color::srgb(0.42, 0.46, 0.48)
+                };
+            }
+        }
+    }
+}
+
+pub fn update_calendar_view_buttons(
+    calendar: Res<CalendarPageState>,
+    mut buttons: Query<
+        (&mut BackgroundColor, Option<&CalendarDayViewButton>, Option<&CalendarWeekViewButton>, Option<&CalendarMonthViewButton>),
+        Or<(With<CalendarDayViewButton>, With<CalendarWeekViewButton>, With<CalendarMonthViewButton>)>,
+    >,
+) {
+    if !calendar.is_changed() {
+        return;
+    }
+    for (mut background, day, week, month) in &mut buttons {
+        let selected = (day.is_some() && calendar.view == CalendarView::Day)
+            || (week.is_some() && calendar.view == CalendarView::Week)
+            || (month.is_some() && calendar.view == CalendarView::Month);
+        *background = BackgroundColor(if selected {
+            Color::srgb(0.16, 0.34, 0.38)
+        } else {
+            Color::srgb(0.20, 0.24, 0.28)
+        });
+    }
+}
+
+pub fn update_calendar_view_visibility(
+    calendar: Res<CalendarPageState>,
+    mut containers: ParamSet<(
+        Query<&mut Node, With<CalendarMonthContainer>>,
+        Query<&mut Node, With<CalendarWeekContainer>>,
+        Query<&mut Node, With<CalendarDayContainer>>,
+    )>,
+) {
+    if !calendar.is_changed() {
+        return;
+    }
+    for mut node in &mut containers.p0() {
+        node.display = if calendar.view == CalendarView::Month { Display::Flex } else { Display::None };
+    }
+    for mut node in &mut containers.p1() {
+        node.display = if calendar.view == CalendarView::Week { Display::Flex } else { Display::None };
+    }
+    for mut node in &mut containers.p2() {
+        node.display = if calendar.view == CalendarView::Day { Display::Flex } else { Display::None };
+    }
+}
+
+pub fn update_calendar_week_headings(
+    calendar: Res<CalendarPageState>,
+    mut cells: Query<(&mut CalendarDateCell, &mut BackgroundColor, &Children, &CalendarWeekDateCell)>,
+    mut texts: Query<&mut Text, With<CalendarWeekDateText>>,
+) {
+    if !calendar.is_changed() || calendar.view != CalendarView::Week {
+        return;
+    }
+    let monday = calendar.visible_date.checked_sub_days(Days::new(calendar.visible_date.weekday().num_days_from_monday() as u64)).unwrap_or(calendar.visible_date);
+    for (mut cell, mut background, children, index) in &mut cells {
+        let date = monday.checked_add_days(Days::new(index.0 as u64)).unwrap_or(monday);
+        cell.date = date;
+        *background = BackgroundColor(if date == calendar.selected_date {
+            Color::srgb(0.16, 0.34, 0.38)
+        } else {
+            Color::srgb(0.11, 0.14, 0.16)
+        });
+        for child in children.iter() {
+            if let Ok(mut text) = texts.get_mut(child) {
+                text.0 = date.format("%a %e").to_string();
+            }
+        }
+    }
+    // for (index, mut text) in texts.iter_mut().enumerate() {
+    //     let date = monday.checked_add_days(Days::new(index as u64)).unwrap_or(monday);
+    //     text.0 = date.format("%a %e").to_string();
+    // }
 }
