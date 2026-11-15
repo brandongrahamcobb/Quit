@@ -18,12 +18,12 @@
 */
 use bevy::prelude::*;
 
-use crate::system::login::setup_login;
+use crate::system::login::{spawn::spawn_login_navigation};
 
 pub struct StartupPlugin;
 
 impl Plugin for StartupPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_login);
+        app.add_systems(Startup, spawn_login_navigation);
     }
 }

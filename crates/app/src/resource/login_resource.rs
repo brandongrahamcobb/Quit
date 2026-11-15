@@ -18,37 +18,31 @@
  */
 
 use bevy::ecs::resource::Resource;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{Receiver};
 use std::sync::Mutex;
+
+#[derive(Default, Resource)]
+pub struct LoginPageState {
+    pub pending: bool,
+}
+
+#[derive(Default, Resource)]
+pub struct LoginFormState {
+    pub username: String,
+    pub password: String,
+    pub error: Option<String>
+}
 
 #[derive(Debug)]
 pub enum LoginResult {
-    Authenticated { id: i32, username: String, accepted_tos: bool, quit_status: Option<String> },
+    Authenticated { id: i32, accepted_tos: bool, quit_status: Option<String> },
     InvalidCredentials,
     DatabaseUnavailable,
 }
 
-#[derive(Resource)]
-pub struct LoginResults {
-    pub sender: Sender<LoginResult>,
-    pub receiver: Mutex<Receiver<LoginResult>>,
-}
-
-impl Default for LoginResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
-}
-
-#[derive(Resource, Default)]
-pub struct LoginPending(pub bool);
+#[derive(Default, Resource)]
+pub struct LoginReceiver(pub Mutex<Option<Receiver<LoginResult>>>);
 
 #[derive(Resource)]
-pub struct AuthenticatedAccount {
-    pub id: i32,
-    pub username: String,
-}
+pub struct AuthenticatedAccount(pub i32);
+

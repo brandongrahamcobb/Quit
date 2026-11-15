@@ -364,7 +364,7 @@ pub fn load_wallpaper_settings(
     account: Res<AuthenticatedAccount>,
     results: Res<WallpaperSettingsLoadResults>,
 ) {
-    let account_id = account.id;
+    let account_id = account.0;
     let pool = database.0.clone();
     let sender = results.sender.clone();
     thread::spawn(move || {
@@ -445,7 +445,7 @@ pub fn save_wallpaper_settings(
         return;
     }
     debounce.dirty = false;
-    let account_id = account.id;
+    let account_id = account.0;
     let file_name = settings.image.clone();
     let mode = match settings.mode {
         WallpaperMode::Auto => "Auto",

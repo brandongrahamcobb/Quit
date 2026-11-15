@@ -26,32 +26,10 @@ pub struct UsernameField;
 pub struct PasswordField;
 
 #[derive(Component)]
-pub struct UsernameDisplay;
-
-#[derive(Component)]
-pub struct PasswordDisplay;
-
-#[derive(Resource, Default)]
-pub struct LoginForm {
-    pub username: String,
-    pub password: String,
-    pub focused: LoginFocus,
-    pub show_caret: bool,
-    pub caret_started_at: f64
-}
-
-#[derive(Clone, Copy, Default)]
-pub enum LoginFocus {
-    #[default]
-    Username,
-    Password,
-}
-
-#[derive(Component)]
 pub struct LoginSubmit;
 
 #[derive(Component)]
 pub struct LoginStatusDisplay;
 
 #[derive(Component)]
-pub struct LoginScreen;
+pub struct LoginPage;

@@ -46,14 +46,14 @@ pub fn poll_calendar_entry_load_results(
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 *slot = None;
-                Some((account.id, page_state.selected_date, Err("Calendar entry loading worker disconnected.".to_string())))
+                Some((account.0, page_state.selected_date, Err("Calendar entry loading worker disconnected.".to_string())))
             }
         }
     };
     let Some((acc_id, date, result)) = result else {
         return;
     };
-    if acc_id != account.id || date != page_state.selected_date {
+    if acc_id != account.0 || date != page_state.selected_date {
         return;
     }
     page_state.loading_entries = true;

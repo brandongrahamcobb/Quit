@@ -18,19 +18,18 @@
 */
 use bevy::prelude::*;
 
-use crate::component::login::LoginForm;
 use crate::page::AppPage;
-use crate::resource::login_resource::{LoginPending, LoginResults};
-use crate::system::login::{poll_login_results, submit_login_on_enter, sync_login_fields};
+use crate::resource::login_resource::{LoginFormState, LoginPageState, LoginReceiver};
+use crate::system::login::poll::{poll_login_fields, poll_login_results};
 
 pub struct LoginPlugin;
 
 impl Plugin for LoginPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AppPage>()
-            .init_resource::<LoginForm>()
-            .init_resource::<LoginPending>()
-            .init_resource::<LoginResults>()
-            .add_systems(Update, (sync_login_fields, poll_login_results, submit_login_on_enter).run_if(in_state(AppPage::Login)));
+            .init_resource::<LoginPageState>()
+            .init_resource::<LoginFormState>()
+            .init_resource::<LoginReceiver>()
+            .add_systems(Update, (poll_login_fields, poll_login_results).run_if(in_state(AppPage::Login)));
     }
 }

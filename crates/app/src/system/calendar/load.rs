@@ -53,7 +53,7 @@ pub fn begin_calendar_entries_load(
     calendar.entries.clear();
     calendar.error = None;
     calendar.loading_entries = true;
-    let acc_id = account.id;
+    let acc_id = account.0;
     let pool = database.0.clone();
     let (sender, result_receiver) = channel();
     if let Ok(mut slot) = receiver.0.lock() {

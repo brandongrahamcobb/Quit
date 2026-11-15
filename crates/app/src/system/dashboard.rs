@@ -28,12 +28,10 @@ use crate::component::page::PageRoot;
 use crate::component::product::OpenProductsButton;
 use crate::component::settings::WallpaperBackground;
 use crate::page::AppPage;
-use crate::resource::login_resource::AuthenticatedAccount;
 use crate::resource::settings_resource::{WallpaperMode, WallpaperSettings};
 
 pub fn setup_dashboard(
     mut commands: Commands,
-    account: Res<AuthenticatedAccount>,
     asset_server: Res<AssetServer>,
     wallpaper_settings: Res<WallpaperSettings>,
 ) {
@@ -69,7 +67,7 @@ pub fn setup_dashboard(
             BackgroundColor(Color::srgb(0.10, 0.13, 0.15)),
         )).with_children(|panel| {
             panel.spawn((
-                Text::new(format!("Welcome, {}.", account.username)),
+                Text::new(format!("Welcome.")),
                 TextFont {
                     font_size: FontSize::Px(32.0),
                     ..default()
