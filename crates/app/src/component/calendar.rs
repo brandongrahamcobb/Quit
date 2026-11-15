@@ -101,6 +101,9 @@ pub struct CalendarWeekDateCell(pub usize);
 #[derive(Component)]
 pub struct CalendarMonthDateCell(pub usize);
 
+#[derive(Component)]
+pub struct CalendarAddEntryButton;
+
 
 
 

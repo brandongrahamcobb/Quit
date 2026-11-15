@@ -20,8 +20,7 @@
 use std::collections::HashMap;
 
 use bevy::DefaultPlugins;
-use bevy::app::{App, Startup};
-use bevy::ecs::system::Commands;
+use bevy::app::App;
 use bevy::input_focus::tab_navigation::TabNavigationPlugin;
 use db::pool::DbPool;
 use quit::plugin::calendar_plugin::CalendarPlugin;

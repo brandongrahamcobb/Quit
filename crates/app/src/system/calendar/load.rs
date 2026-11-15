@@ -21,44 +21,48 @@
 use bevy::prelude::*;
 use db::product::getters::get_all_product_models;
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarEntryLoadResults, CalendarPageState, CalendarProductEntry, CalendarProductLoadReceiver, CalendarProducts, 
+    CalendarEntryLoadReceiver, CalendarFormState, CalendarPageState,
 };
 use crate::resource::custom_resource::Database;
 use crate::resource::login_resource::AuthenticatedAccount;
+use crate::resource::product_resource::{ProductEntry, ProductLoadReceiver};
 use crate::system::calendar::helper::local_day_boundary;
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
 
+
 pub fn begin_calendar_entries_load(
     database: Res<Database>,
     account: Res<AuthenticatedAccount>,
-    calendar: Res<CalendarPageState>,
-    mut entries: ResMut<CalendarEntries>,
-    results: Res<CalendarEntryLoadResults>,
+    mut calendar: ResMut<CalendarPageState>,
+    receiver: Res<CalendarEntryLoadReceiver>,
 ) {
     let date = calendar.selected_date;
-    if entries.requested_date == Some(date) {
-        return;
-    }
     let Some(next_date) = date.succ_opt() else {
-        entries.error = Some("Could not determine the next calendar date.".to_owned());
+        calendar.error = Some("Could not determine the next calendar date.".to_owned());
         return;
     };
     let (Some(start), Some(end)) = (
         local_day_boundary(date),
         local_day_boundary(next_date),
     ) else {
-        entries.error = Some("Could not determine the selected day's local time range.".to_owned());
+        calendar.error = Some("Could not determine the selected day's local time range.".to_owned());
         return;
     };
-    entries.requested_date = Some(date);
-    entries.loaded_date = None;
-    entries.entries.clear();
-    entries.error = None;
+    calendar.entries.clear();
+    calendar.error = None;
+    calendar.loading_entries = true;
     let acc_id = account.id;
     let pool = database.0.clone();
-    let sender = results.sender.clone();
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        calendar.loading_entries = false;
+        calendar.error = Some("Could not initialize calendar entry loading.".to_string());
+        return;
+    }
     thread::spawn(move || {
         let result = match Builder::new_current_thread().enable_all().build() {
             Ok(runtime) => runtime
@@ -74,31 +78,42 @@ pub fn begin_calendar_entries_load(
     });
 }
 
-pub fn begin_calendar_product_load(database: Res<Database>, mut products: ResMut<CalendarProducts>, receiver: Res<CalendarProductLoadReceiver>) {
-    if products.loading || products.loaded {
+pub fn begin_calendar_product_load(database: Res<Database>, receiver: Res<ProductLoadReceiver>, mut form_state: ResMut<CalendarFormState>) {
+    if form_state.loading_products {
         return;
     }
-    products.loading = true;
-    products.error = None;
+    form_state.loading_products = true;
+    form_state.error = None;
     let pool = database.0.clone();
     let (sender, result_receiver) = channel();
     if let Ok(mut slot) = receiver.0.lock() {
         *slot = Some(result_receiver);
     } else {
-        products.loading = false;
-        products.error = Some("Could not initialize calendar product loading.".to_string());
+        form_state.loading_products = false;
+        form_state.error = Some("Could not initialize calendar product loading.".to_string());
         return;
     }
     thread::spawn(move || {
         let result = match Builder::new_current_thread().enable_all().build() {
-            Ok(runtime) => runtime.block_on(get_all_product_models(&pool)).map(|models| {
-                models.into_iter().map(|model| CalendarProductEntry {
-                    id: model.id,
-                    name: model.name,
-                    serving_size: model.serving_size,
-                    serving_unit: model.serving_unit,
-                }).collect::<Vec<_>>()
-            }).map_err(|error| format!("{error:?}")),
+            Ok(runtime) => runtime
+                .block_on(get_all_product_models(&pool))
+                .map(|models| {
+                    models
+                        .into_iter()
+                        .map(|model| ProductEntry {
+                            id: model.id,
+                            name: model.name,
+                            route: model.route,
+                            brand: model.brand,
+                            description: model.description,
+                            image_path: model.image_path,
+                            serving_size: model.serving_size,
+                            serving_unit: model.serving_unit,
+                            serving_description: model.serving_description,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .map_err(|error| format!("{error:?}")),
             Err(error) => Err(error.to_string()),
         };
         let _ = sender.send(result);

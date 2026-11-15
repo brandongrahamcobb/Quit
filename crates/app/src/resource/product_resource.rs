@@ -19,8 +19,8 @@
 
 use bevy::prelude::*;
 use bigdecimal::BigDecimal;
-use db::product::model::ProductCompoundModel;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use db::product::model::{ProductCompoundModel};
+use std::sync::mpsc::{Receiver};
 use std::sync::Mutex;
 
 use crate::resource::compound_resource::CompoundEntry;
@@ -85,64 +85,30 @@ pub struct ProductCompositionEntry {
     pub compound_units: String,
 }
 
+pub type ProductLoadResult = Result<Vec<ProductEntry>, String>;
 #[derive(Resource, Default)]
-pub struct ProductLoadReceiver(
-    pub Mutex<Option<Receiver<Result<Vec<ProductEntry>, String>>>>,
-);
+pub struct ProductLoadReceiver(pub Mutex<Option<Receiver<ProductLoadResult>>>);
 
-#[derive(Resource)]
-pub struct ProductSaveResults {
-    pub sender: Sender<Result<Vec<ProductEntry>, String>>,
-    pub receiver: Mutex<Receiver<Result<Vec<ProductEntry>, String>>>,
-}
-
-impl Default for ProductSaveResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
-}
-
+pub type ProductImageUploadResult = Result<Option<String>, String>;
 #[derive(Resource, Default)]
-pub struct ProductImageUploadReceiver(
-    pub Mutex<Option<Receiver<Result<Option<String>, String>>>>,
-);
+pub struct ProductImageUploadReceiver(pub Mutex<Option<Receiver<ProductImageUploadResult>>>);
 
+pub type ProductDeleteResult = (i32, Result<(), String>);
 #[derive(Resource, Default)]
-pub struct ProductDeleteResults(
-    pub Mutex<Option<Receiver<(i32, Result<(), String>)>>>,
-);
+pub struct ProductDeleteReceiver(pub Mutex<Option<Receiver<ProductDeleteResult>>>);
 
-#[derive(Resource)]
-pub struct ProductCompoundLoadResults {
-    pub sender: Sender<Result<Vec<CompoundEntry>, String>>,
-    pub receiver: Mutex<Receiver<Result<Vec<CompoundEntry>, String>>>,
-}
+pub type ProductCompoundLoadResult = Result<Vec<CompoundEntry>, String>;
+#[derive(Resource, Default)]
+pub struct ProductCompoundLoadReceiver(pub Mutex<Option<Receiver<ProductCompoundLoadResult>>>);
 
-impl Default for ProductCompoundLoadResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
-}
+pub type ProductCompositionLoadResult = (i32, Result<Vec<ProductCompoundModel>, String>);
+#[derive(Default, Resource)]
+pub struct ProductCompositionLoadReceiver(pub Mutex<Option<Receiver<(i32, Result<Vec<ProductCompoundModel>, String>)>>>);
 
-#[derive(Resource)]
-pub struct ProductCompositionLoadResults {
-    pub sender: Sender<(i32, Result<Vec<ProductCompoundModel>, String>)>,
-    pub receiver: Mutex<Receiver<(i32, Result<Vec<ProductCompoundModel>, String>)>>,
-}
-impl Default for ProductCompositionLoadResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self { sender, receiver: Mutex::new(receiver) }
-    }
-}
+pub type ProductSaveResult = Result<Vec<ProductEntry>, String>;
+#[derive(Default, Resource)]
+pub struct ProductSaveReceiver(pub Mutex<Option<Receiver<ProductSaveResult>>>);
+
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProductOverlay {

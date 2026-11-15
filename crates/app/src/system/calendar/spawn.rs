@@ -24,12 +24,14 @@ use bevy::text::{EditableText, TextCursorStyle};
 use bevy::ui_widgets::{Button, TextInput};
 use chrono::{Datelike, Days, Timelike};
 use crate::component::calendar::{
-    CalendarBackButton, CalendarDashboardButton, CalendarDateCell, CalendarDateCellText, CalendarDayContainer, CalendarDayViewButton, CalendarFormOverlay, CalendarFormProductListContainer, CalendarFormProductSearchText, CalendarFormRoot, CalendarMonthContainer, CalendarMonthDateCell, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekContainer, CalendarWeekDateCell, CalendarWeekDateText, CalendarWeekViewButton,
+    CalendarAddEntryButton, CalendarDashboardButton, CalendarDateCell, CalendarDateCellText, CalendarDayContainer, CalendarDayViewButton, CalendarFormOverlay, CalendarFormProductListContainer, CalendarFormProductSearchText, CalendarFormRoot, CalendarMonthContainer, CalendarMonthDateCell, CalendarMonthViewButton, CalendarNavigationRoot, CalendarNextButton, CalendarPeriodTitle, CalendarPreviousButton, CalendarTodayButton, CalendarWeekContainer, CalendarWeekDateCell, CalendarWeekDateText, CalendarWeekViewButton,
 };
 use crate::component::page::PageRoot;
 use crate::resource::calendar_resource::{CalendarPageState, CalendarView};
+use crate::system::calendar::activate::add_edit::add_entry;
 use crate::system::calendar::activate::origin::{handle_cell_button, handle_day_button, handle_month_button, handle_next_button, handle_previous_button, handle_today_button, handle_week_button};
 use crate::system::calendar::helper::calendar_period_label;
+use crate::system::dashboard::open_dashboard;
 
 pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarPageState>) {
     let dates = calendar.month_grid_dates();
@@ -64,9 +66,9 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarP
                 Name::new("Calendar Navigation"),
             ))
             .with_children(|toolbar| {
-                spawn_calendar_button(toolbar, "<", CalendarPreviousButton).observe(handle_previous_button);
-                spawn_calendar_button(toolbar, "Today", CalendarTodayButton).observe(handle_today_button);
-                spawn_calendar_button(toolbar, ">", CalendarNextButton).observe(handle_next_button);
+                spawn_calendar_button(toolbar, "<", CalendarPreviousButton, Color::srgb(0.16, 0.20, 0.24)).observe(handle_previous_button);
+                spawn_calendar_button(toolbar, "Today", CalendarTodayButton, Color::srgb(0.16, 0.20, 0.24)).observe(handle_today_button);
+                spawn_calendar_button(toolbar, ">", CalendarNextButton, Color::srgb(0.16, 0.20, 0.24)).observe(handle_next_button);
                 toolbar.spawn((
                     Text::new(calendar_period_label(&calendar)),
                     TextFont::from_font_size(18.0),
@@ -91,14 +93,8 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarP
                     CalendarMonthViewButton,
                     calendar.view == CalendarView::Month,
                 ).observe(handle_month_button);
-                toolbar.spawn((
-                    Button,
-                    CalendarDashboardButton,
-                    Node { padding: UiRect::axes(px(12), px(8)), ..default() },
-                    BackgroundColor(Color::srgb(0.20, 0.24, 0.28)),
-                )).with_children(|button| {
-                    button.spawn(Text::new("Dashboard"));
-                });
+                spawn_calendar_button(toolbar, "+", CalendarAddEntryButton, Color::srgb(0.16, 0.38, 0.28)).observe(add_entry);
+                spawn_calendar_button(toolbar, "Dashboard", CalendarDashboardButton, Color::srgb(0.16, 0.20, 0.24)).observe(open_dashboard);
             });
             page.spawn((
                 Node {
@@ -158,96 +154,6 @@ pub fn spawn_calendar_navigation(mut commands: Commands, calendar: Res<CalendarP
             // page.spawn((
             //     Node {
             //         width: percent(100),
-            //         flex_grow: 1.0,
-            //         flex_direction: FlexDirection::Column,
-            //         row_gap: px(4),
-            //         ..default()
-            //     },
-            //     Name::new("Calendar Month Grid"),
-            // ))
-            // .with_children(|grid| {
-            //     if calendar.view == CalendarView::Day {
-            //         spawn_calendar_day_timeline(grid, calendar.visible_date);
-            //         return;
-            //     }
-            //     if calendar.view == CalendarView::Week {
-            //         spawn_calendar_week_timeline(grid, calendar.visible_date, calendar.selected_date);
-            //         return;
-            //     }
-            //     grid.spawn((
-            //         Node {
-            //             width: percent(100),
-            //             height: px(28),
-            //             flex_direction: FlexDirection::Row,
-            //             ..default()
-            //         },
-            //         Name::new("Calendar Weekdays"),
-            //     ))
-            //     .with_children(|weekdays| {
-            //        for label in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] {
-            //             weekdays.spawn((
-            //                 Node {
-            //                     width: percent(14.2857),
-            //                     justify_content: JustifyContent::Center,
-            //                     align_items: AlignItems::Center,
-            //                     ..default()
-            //                 },
-            //                 Text::new(label),
-            //                 TextFont::from_font_size(13.0),
-            //                 TextColor(Color::srgb(0.65, 0.70, 0.72)),
-            //             ));
-            //         }
-            //     });
-            //     grid.spawn((
-            //         Node {
-            //             width: percent(100),
-            //             flex_grow: 1.0,
-            //             flex_direction: FlexDirection::Row,
-            //             flex_wrap: FlexWrap::Wrap,
-            //             ..default()
-            //         },
-            //         Name::new("Calendar Dates"),
-            //     ))
-            //     .with_children(|cells| {
-            //         for date in dates {
-            //             let in_visible_month =
-            //                 date.month() == visible_month && date.year() == visible_year;
-            //             let text_color = if in_visible_month {
-            //                 Color::WHITE
-            //             } else {
-            //                 Color::srgb(0.42, 0.46, 0.48)
-            //             };
-            //             let background_color = if date == calendar.selected_date {
-            //                 Color::srgb(0.16, 0.34, 0.38)
-            //             } else {
-            //                 Color::srgb(0.11, 0.14, 0.16)
-            //             };
-            //             cells.spawn((
-            //                 Button,
-            //                 Node {
-            //                     width: percent(14.2857),
-            //                     height: percent(16.6667),
-            //                     padding: UiRect::all(px(8)),
-            //                     ..default()
-            //                 },
-            //                 BackgroundColor(background_color),
-            //                 CalendarDateCell {
-            //                     date,
-            //                     in_visible_month,
-            //                 },
-            //                 children![(
-            //                     Text::new(date.day().to_string()),
-            //                     TextFont::from_font_size(14.0),
-            //                     TextColor(text_color),
-            //                     CalendarDateCellText
-            //                 )],
-            //             )).observe(handle_cell_button);
-            //         }
-            //     });
-            // });
-            // page.spawn((
-            //     Node {
-            //         width: percent(100),
             //         padding: UiRect::all(px(16)),
             //         flex_direction: FlexDirection::Column,
             //         row_gap: px(6),
@@ -297,6 +203,7 @@ fn spawn_calendar_button<'a, T>(
     parent: &'a mut ChildSpawnerCommands,
     label: &str,
     marker: T,
+    color: Color,
 ) -> EntityCommands<'a>
 where
     T: Component,
@@ -312,7 +219,7 @@ where
                 align_items: AlignItems::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.16, 0.20, 0.24)),
+            BackgroundColor(color),
             marker,
         ));
     entity.with_child((

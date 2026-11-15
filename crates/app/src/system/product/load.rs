@@ -22,7 +22,7 @@ use db::compound::getters::get_all_compound_models;
 use db::product::getters::{get_all_product_models, get_product_compounds_by_id};
 use crate::resource::compound_resource::CompoundEntry;
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductCompositionLoadResults, ProductCompoundLoadResults, ProductEntry, ProductFormState, ProductLoadReceiver, ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductCompositionLoadReceiver, ProductCompoundLoadReceiver, ProductEntry, ProductFormState, ProductLoadReceiver, ProductOverlay, ProductPageState};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
@@ -76,14 +76,21 @@ pub fn begin_product_load(database: Res<Database>, mut page_state: ResMut<Produc
 pub fn begin_product_compound_load(
     database: Res<Database>,
     mut form_state: ResMut<ProductFormState>,
-    results: Res<ProductCompoundLoadResults>,
+    receiver: Res<ProductCompoundLoadReceiver>,
 ) {
     if form_state.loading_compounds {
         return;
     }
     form_state.loading_compounds = true;
     let pool = database.0.clone();
-    let sender = results.sender.clone();
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        form_state.loading_compounds = false;
+        form_state.error = Some("Could not initialize product compound loading.".to_string());
+        return;
+    }
     thread::spawn(move || {
         let runtime = Builder::new_current_thread()
             .enable_all()
@@ -114,9 +121,9 @@ pub fn begin_product_compound_load(
 
 pub fn begin_product_composition_load(
     database: Res<Database>,
+    receiver: Res<ProductCompositionLoadReceiver>,
     page_state: Res<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
-    results: Res<ProductCompositionLoadResults>,
 ) {
     let Some(ProductOverlay::Form { editing_id: Some(product_id) }) = page_state.overlay else {
         return;
@@ -125,8 +132,14 @@ pub fn begin_product_composition_load(
         return;
     }
     let pool = database.0.clone();
-    let sender = results.sender.clone();
-    form_state.loading_composition = true;
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        form_state.loading_composition = false;
+        form_state.error = Some("Could not initialize product composition loading.".to_string());
+        return;
+    }
     bevy::tasks::IoTaskPool::get().spawn(async move {
         let result = get_product_compounds_by_id(&pool, product_id).await.map_err(|error| error.to_string());
         let _ = sender.send((product_id, result));

@@ -24,7 +24,7 @@ use bevy::ui_widgets::Activate;
 
 use crate::{component::calendar::{CalendarFormProductSearchText, CalendarFormServingsText, CalendarFormTimeText}, resource::calendar_resource::{CalendarFormState, CalendarOverlay, CalendarPageState}};
 
-pub fn add_product(
+pub fn add_entry(
     _activate: On<Activate>,
     inputs: ParamSet<(
         Query<&mut EditableText, With<CalendarFormServingsText>>,

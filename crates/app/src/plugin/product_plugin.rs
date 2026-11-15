@@ -19,8 +19,7 @@
 use bevy::prelude::*;
 
 use crate::page::AppPage;
-use crate::resource::product_resource::{ProductCompositionLoadResults, ProductCompoundLoadResults, ProductDeleteResults, ProductDeletionState, ProductFormState, ProductImageUploadReceiver, ProductLoadReceiver, ProductPageState, ProductSaveResults};
-// use crate::system::product::activate::add_edit::detect_product_form_open;
+use crate::resource::product_resource::{ProductCompositionLoadReceiver, ProductCompoundLoadReceiver, ProductDeleteReceiver, ProductDeletionState, ProductFormState, ProductImageUploadReceiver, ProductLoadReceiver, ProductPageState, ProductSaveReceiver};
 use crate::system::product::activate::origin::handle_product_escape;
 use crate::system::product::load::{begin_product_composition_load, begin_product_compound_load, begin_product_load};
 use crate::system::product::poll::{poll_product_composition_load_results, poll_product_compound_load_results, poll_product_delete_results, poll_product_image_upload, poll_product_load, poll_product_save_results};
@@ -36,11 +35,11 @@ impl Plugin for ProductPlugin {
             .init_resource::<ProductFormState>()
             .init_resource::<ProductDeletionState>()
             .init_resource::<ProductLoadReceiver>()
-            .init_resource::<ProductSaveResults>()
+            .init_resource::<ProductSaveReceiver>()
             .init_resource::<ProductImageUploadReceiver>()
-            .init_resource::<ProductDeleteResults>()
-            .init_resource::<ProductCompoundLoadResults>()
-            .init_resource::<ProductCompositionLoadResults>()
+            .init_resource::<ProductDeleteReceiver>()
+            .init_resource::<ProductCompoundLoadReceiver>()
+            .init_resource::<ProductCompositionLoadReceiver>()
             .add_systems(
                 OnEnter(AppPage::Products),
                 (

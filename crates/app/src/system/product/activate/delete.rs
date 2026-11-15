@@ -22,7 +22,7 @@ use bevy::ui_widgets::Activate;
 use db::product::setters::delete_product_by_id;
 use crate::component::product::ProductDeleteButton;
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductDeleteResults, ProductDeletionState, ProductOverlay, ProductPageState};
+use crate::resource::product_resource::{ProductDeleteReceiver, ProductDeletionState, ProductOverlay, ProductPageState};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
@@ -40,7 +40,7 @@ pub fn cancel_product_delete(
 pub fn confirm_product_delete(
     _activate: On<Activate>,
     database: Res<Database>,
-    results: ResMut<ProductDeleteResults>,
+    receiver: Res<ProductDeleteReceiver>,
     mut page_state: ResMut<ProductPageState>,
     mut deletion_state: ResMut<ProductDeletionState>,
 ) {
@@ -51,8 +51,14 @@ pub fn confirm_product_delete(
         return;
     };
     let pool = database.0.clone();
-    let (sender, receiver) = channel();
-    *results.0.lock().unwrap() = Some(receiver);
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        deletion_state.deleting = false;
+        deletion_state.error = Some("Could not initialize product deletion.".to_string());
+        return;
+    }
     deletion_state.deleting = true;
     deletion_state.error = None;
     thread::spawn(move || {

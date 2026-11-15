@@ -17,33 +17,23 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::sync::{Mutex, mpsc::{Receiver, Sender, channel}};
-
 use bevy::prelude::*;
-use bigdecimal::BigDecimal;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use db::calendar::entry::model::EntryModel;
+use std::sync::Mutex;
+use std::sync::mpsc::Receiver;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CalendarOverlay {
-    Form { editing_id: Option<i32> },
-    Delete(i32),
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum CalendarView {
-    Day,
-    Week,
-    #[default]
-    Month,
-}
+use crate::resource::product_resource::ProductEntry;
 
 #[derive(Resource)]
 pub struct CalendarPageState {
     pub view: CalendarView,
     pub visible_date: NaiveDate,
     pub selected_date: NaiveDate,
-    pub overlay: Option<CalendarOverlay>
+    pub overlay: Option<CalendarOverlay>,
+    pub loading_entries: bool,
+    pub entries: Vec<EntryModel>,
+    pub error: Option<String>
 }
 
 impl Default for CalendarPageState {
@@ -53,7 +43,10 @@ impl Default for CalendarPageState {
             view: CalendarView::Month,
             visible_date: today,
             selected_date: today,
-            overlay: None
+            overlay: None,
+            loading_entries: false,
+            entries: Vec::new(),
+            error: None
         }
     }
 }
@@ -76,36 +69,12 @@ impl CalendarPageState {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct CalendarEntries {
-    pub loaded_date: Option<NaiveDate>,
-    pub requested_date: Option<NaiveDate>,
-    pub entries: Vec<EntryModel>,
-    pub error: Option<String>,
-}
-
-pub type CalendarEntryLoadResult =
-    (i32, NaiveDate, Result<Vec<EntryModel>, String>);
-
-#[derive(Resource)]
-pub struct CalendarEntryLoadResults {
-    pub sender: Sender<CalendarEntryLoadResult>,
-    pub receiver: Mutex<Receiver<CalendarEntryLoadResult>>,
-}
-
-impl Default for CalendarEntryLoadResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
-}
 
 #[derive(Default, Resource)]
 pub struct CalendarFormState {
     pub time: String,
+    pub loading_products: bool,
+    pub products: Vec<ProductEntry>,
     pub product_id: Option<i32>,
     pub product_search_query: Option<String>,
     pub product_search_query_open: bool,
@@ -113,42 +82,25 @@ pub struct CalendarFormState {
     pub error: Option<String>,
 }
 
-pub type CalendarEntrySaveResult =
-    (i32, NaiveDate, Result<EntryModel, String>);
+pub type CalendarEntryLoadResult = (i32, NaiveDate, Result<Vec<EntryModel>, String>);
+#[derive(Default, Resource)]
+pub struct CalendarEntryLoadReceiver(pub Mutex<Option<Receiver<CalendarEntryLoadResult>>>);
+pub type CalendarFormSaveResult = Result<EntryModel>;
+#[derive(Default, Resource)]
+pub struct CalendarFormSaveReceiver(pub Mutex<Option<Receiver<CalendarFormSaveResult>>>);
 
-#[derive(Resource)]
-pub struct CalendarEntrySaveResults {
-    pub sender: Sender<CalendarEntrySaveResult>,
-    pub receiver: Mutex<Receiver<CalendarEntrySaveResult>>,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CalendarOverlay {
+    Form { editing_id: Option<i32> },
+    Delete(i32),
 }
 
-impl Default for CalendarEntrySaveResults {
-    fn default() -> Self {
-        let (sender, receiver) = channel();
-        Self {
-            sender,
-            receiver: Mutex::new(receiver),
-        }
-    }
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum CalendarView {
+    Day,
+    Week,
+    #[default]
+    Month,
 }
 
-#[derive(Clone)]
-pub struct CalendarProductEntry {
-    pub id: i32,
-    pub name: String,
-    pub serving_size: BigDecimal,
-    pub serving_unit: String,
-}
 
-#[derive(Resource, Default)]
-pub struct CalendarProducts {
-    pub products: Vec<CalendarProductEntry>,
-    pub loaded: bool,
-    pub loading: bool,
-    pub error: Option<String>,
-}
-
-#[derive(Resource, Default)]
-pub struct CalendarProductLoadReceiver(pub Mutex<Option<Receiver<CalendarProductLoadResult>>>);
-
-pub type CalendarProductLoadResult = Result<Vec<CalendarProductEntry>, String>;

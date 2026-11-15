@@ -19,49 +19,118 @@
 
 
 use bevy::prelude::*;
-use chrono::Local;
-use crate::component::entry::{CalendarEntryModal, CalendarEntryProductButton, CalendarEntryProductList};
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarFormState, CalendarEntryLoadResults, CalendarEntrySaveResults, CalendarProductLoadReceiver, CalendarProducts,
+    CalendarEntryLoadReceiver, CalendarFormState, CalendarPageState,
 };
 use crate::resource::login_resource::AuthenticatedAccount;
+use crate::resource::product_resource::ProductLoadReceiver;
 use std::sync::mpsc::TryRecvError;
 
 pub fn poll_calendar_entry_load_results(
-    results: Res<CalendarEntryLoadResults>,
+    receiver: Res<CalendarEntryLoadReceiver>,
     account: Res<AuthenticatedAccount>,
-    mut calendar_entries: ResMut<CalendarEntries>,
+    mut page_state: ResMut<CalendarPageState>
 ) {
-    let receiver = match results.receiver.lock() {
-        Ok(receiver) => receiver,
-        Err(error) => {
-            calendar_entries.error = Some(error.to_string());
+    let result = {
+        let Ok(mut slot) = receiver.0.lock() else {
             return;
+        };
+        let Some(result_receiver) = slot.as_ref() else {
+            return;
+        };
+        match result_receiver.try_recv() {
+            Ok(result) => {
+                *slot = None;
+                Some(result)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some((account.id, page_state.selected_date, Err("Calendar entry loading worker disconnected.".to_string())))
+            }
         }
     };
-    loop {
-        match receiver.try_recv() {
-            Ok((acc_id, date, result)) => {
-                if acc_id != account.id
-                    || calendar_entries.requested_date != Some(date)
-                {
-                    continue;
-                }
-                match result {
-                    Ok(entries) => {
-                        calendar_entries.loaded_date = Some(date);
-                        calendar_entries.entries = entries;
-                        calendar_entries.error = None;
-                    }
-                    Err(error) => {
-                        calendar_entries.error = Some(error);
-                    }
-                }
-            }
-            Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
+    let Some((acc_id, date, result)) = result else {
+        return;
+    };
+    if acc_id != account.id || date != page_state.selected_date {
+        return;
+    }
+    page_state.loading_entries = true;
+    match result {
+        Ok(entries) => {
+            page_state.entries = entries;
+            page_state.error = None;
+        }
+        Err(error) => {
+            page_state.error = Some(error);
         }
     }
 }
+
+pub fn poll_calendar_products_load(receiver: Res<ProductLoadReceiver>, mut form_state: ResMut<CalendarFormState>) {
+    let result = {
+        let Ok(mut slot) = receiver.0.lock() else {
+            return;
+        };
+        let Some(result_receiver) = slot.as_ref() else {
+            return;
+        };
+        match result_receiver.try_recv() {
+            Ok(result) => {
+                *slot = None;
+                Some(result)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Product loading worker disconnected.".to_string()))
+            }
+        }
+    };
+    let Some(result) = result else {
+        return;
+    };
+    form_state.loading_products = false;
+    match result {
+        Ok(products) => {
+            form_state.products = products;
+            form_state.error = None;
+        }
+        Err(error) => {
+            form_state.error = Some(error);
+        }
+    }
+}
+
+// pub fn poll_product_delete_results(
+//     results: ResMut<ProductDeleteResults>,
+//     mut page_state: ResMut<ProductPageState>,
+//     mut deletion_state: ResMut<ProductDeletionState>,
+// ) {
+//     let result = {
+//         let receiver = results.0.lock().unwrap();
+//         receiver.as_ref().and_then(|receiver| receiver.try_recv().ok())
+//     };
+//     let Some((id, result)) = result else {
+//         return;
+//     };
+//     *results.0.lock().unwrap() = None;
+//     deletion_state.deleting = false;
+//     match result {
+//         Ok(()) => {
+//             page_state.products.retain(|product| product.id != id);
+//             if page_state.overlay == Some(ProductOverlay::Preview(id)) || page_state.overlay == Some(ProductOverlay::Delete(id)) {
+//                 page_state.overlay = None;
+//             }
+//             deletion_state.name = None;
+//             deletion_state.error = None;
+//         }
+//         Err(error) => {
+//             deletion_state.error = Some(error);
+//         }
+//     }
+// }
 
 // pub fn poll_calendar_form_save_results(
 //     results: Res<CalendarEntrySaveResults>,
@@ -110,39 +179,3 @@ pub fn poll_calendar_entry_load_results(
 //         }
 //     }
 // }
-
-pub fn poll_calendar_product_load(receiver: Res<CalendarProductLoadReceiver>, mut products: ResMut<CalendarProducts>) {
-    let result = {
-        let Ok(mut slot) = receiver.0.lock() else {
-            return;
-        };
-        let Some(result_receiver) = slot.as_ref() else {
-            return;
-        };
-        match result_receiver.try_recv() {
-            Ok(result) => {
-                *slot = None;
-                Some(result)
-            }
-            Err(TryRecvError::Empty) => None,
-            Err(TryRecvError::Disconnected) => {
-                *slot = None;
-                Some(Err("Calendar product loading worker disconnected.".to_string()))
-            }
-        }
-    };
-    let Some(result) = result else {
-        return;
-    };
-    products.loading = false;
-    match result {
-        Ok(loaded_products) => {
-            products.products = loaded_products;
-            products.loaded = true;
-            products.error = None;
-        }
-        Err(error) => {
-            products.error = Some(error);
-        }
-    }
-}

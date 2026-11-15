@@ -18,15 +18,12 @@
  */
 
 use bevy::prelude::*;
-use bevy::ui_widgets::Button;
-use chrono::{Datelike, Days, Local};
-use crate::component::calendar::{CalendarDateCell, CalendarDateCellText, CalendarDayContainer, CalendarDayViewButton, CalendarDeleteDialog, CalendarFormOverlay, CalendarMonthContainer, CalendarMonthDateCell, CalendarMonthViewButton, CalendarNavigationRoot, CalendarPeriodTitle, CalendarWeekContainer, CalendarWeekDateCell, CalendarWeekDateText, CalendarWeekViewButton};
-use crate::component::entry::{CalendarEntriesText, CalendarEntryErrorText, CalendarEntryProductList, CalendarEntryProductOption};
+use chrono::{Datelike, Days};
+use crate::component::calendar::{CalendarDateCell, CalendarDateCellText, CalendarDayContainer, CalendarDayViewButton, CalendarDeleteDialog, CalendarFormOverlay, CalendarMonthContainer, CalendarMonthDateCell, CalendarMonthViewButton, CalendarPeriodTitle, CalendarWeekContainer, CalendarWeekDateCell, CalendarWeekDateText, CalendarWeekViewButton};
 use crate::resource::calendar_resource::{
-    CalendarEntries, CalendarFormState, CalendarOverlay, CalendarPageState, CalendarProducts, CalendarView, 
+    CalendarOverlay, CalendarPageState, CalendarView, 
 };
 use crate::system::calendar::helper::calendar_period_label;
-use crate::system::calendar::spawn::spawn_calendar_navigation;
 
 pub fn update_calendar_period_title(
     calendar: Res<CalendarPageState>,
@@ -41,81 +38,81 @@ pub fn update_calendar_period_title(
     }
 }
 
-pub fn update_calendar_entries_text(
-    entries: Res<CalendarEntries>,
-    products: Res<CalendarProducts>,
-    mut texts: Query<&mut Text, With<CalendarEntriesText>>,
-) {
-    let content = if let Some(error) = &entries.error {
-        format!("Could not load entries: {error}")
-    } else if entries.loaded_date != entries.requested_date {
-        "Loading entries…".to_owned()
-    } else if !products.loaded {
-        "Loading products…".to_owned()
-    } else if entries.entries.is_empty() {
-        "No usage entries for this day yet.".to_owned()
-    } else {
-        entries.entries.iter().map(|entry| {
-            let time = chrono::DateTime::<Local>::from(entry.occurred_at);
-            let name = products.products.iter().find(|product| product.id == entry.product_id).map(|product| product.name.as_str()).unwrap_or("Unknown product");
-            format!("{} · {}", time.format("%H:%M"), name)
-        }).collect::<Vec<_>>().join("\n")
-    };
-    for mut text in &mut texts {
-        **text = content.clone();
-    }
-}
+// pub fn update_calendar_entries_text(
+//     entries: Res<CalendarEntries>,
+//     products: Res<CalendarProducts>,
+//     mut texts: Query<&mut Text, With<CalendarEntriesText>>,
+// ) {
+//     let content = if let Some(error) = &entries.error {
+//         format!("Could not load entries: {error}")
+//     } else if entries.loaded_date != entries.requested_date {
+//         "Loading entries…".to_owned()
+//     } else if !products.loaded {
+//         "Loading products…".to_owned()
+//     } else if entries.entries.is_empty() {
+//         "No usage entries for this day yet.".to_owned()
+//     } else {
+//         entries.entries.iter().map(|entry| {
+//             let time = chrono::DateTime::<Local>::from(entry.occurred_at);
+//             let name = products.products.iter().find(|product| product.id == entry.product_id).map(|product| product.name.as_str()).unwrap_or("Unknown product");
+//             format!("{} · {}", time.format("%H:%M"), name)
+//         }).collect::<Vec<_>>().join("\n")
+//     };
+//     for mut text in &mut texts {
+//         **text = content.clone();
+//     }
+// }
 
-pub fn update_calendar_entry_error(
-    form: Res<CalendarFormState>,
-    mut texts: Query<&mut Text, With<CalendarEntryErrorText>>,
-) {
-    if !form.is_changed() {
-        return;
-    }
-    let error = form.error.as_deref().unwrap_or("");
-    for mut text in &mut texts {
-        text.0 = error.to_owned();
-    }
-}
+// pub fn update_calendar_entry_error(
+//     form: Res<CalendarFormState>,
+//     mut texts: Query<&mut Text, With<CalendarEntryErrorText>>,
+// ) {
+//     if !form.is_changed() {
+//         return;
+//     }
+//     let error = form.error.as_deref().unwrap_or("");
+//     for mut text in &mut texts {
+//         text.0 = error.to_owned();
+//     }
+// }
 
-pub fn update_calendar_product_options(
-    mut commands: Commands,
-    products: Res<CalendarProducts>,
-    lists: Query<(Entity, Option<&Children>), With<CalendarEntryProductList>>,
-    options: Query<Entity, With<CalendarEntryProductOption>>,
-) {
-    if !products.loaded {
-        return;
-    }
-    let Ok((list_entity, children)) = lists.single() else {
-        return;
-    };
-    if children.is_some_and(|children| !children.is_empty()) {
-        return;
-    }
-    for entity in &options {
-        commands.entity(entity).despawn();
-    }
-    for product in &products.products {
-        commands.spawn((
-            Button,
-            CalendarEntryProductOption(product.id),
-            ChildOf(list_entity),
-            Node {
-                width: px(340),
-                min_height: px(38),
-                padding: UiRect::horizontal(px(12)),
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            BackgroundColor(Color::srgb(0.09, 0.11, 0.12)),
-            Text::new(product.name.clone()),
-            TextFont::from_font_size(14.0),
-            TextColor(Color::WHITE),
-        ));
-    }
-}
+// pub fn update_calendar_product_options(
+//     mut commands: Commands,
+//     products: Res<CalendarProducts>,
+//     lists: Query<(Entity, Option<&Children>), With<CalendarEntryProductList>>,
+//     options: Query<Entity, With<CalendarEntryProductOption>>,
+// ) {
+//     if !products.loaded {
+//         return;
+//     }
+//     let Ok((list_entity, children)) = lists.single() else {
+//         return;
+//     };
+//     if children.is_some_and(|children| !children.is_empty()) {
+//         return;
+//     }
+//     for entity in &options {
+//         commands.entity(entity).despawn();
+//     }
+//     for product in &products.products {
+//         commands.spawn((
+//             Button,
+//             CalendarEntryProductOption(product.id),
+//             ChildOf(list_entity),
+//             Node {
+//                 width: px(340),
+//                 min_height: px(38),
+//                 padding: UiRect::horizontal(px(12)),
+//                 align_items: AlignItems::Center,
+//                 ..default()
+//             },
+//             BackgroundColor(Color::srgb(0.09, 0.11, 0.12)),
+//             Text::new(product.name.clone()),
+//             TextFont::from_font_size(14.0),
+//             TextColor(Color::WHITE),
+//         ));
+//     }
+// }
 
 pub fn update_calendar_overlays(
     mut overlays: ParamSet<(
@@ -240,8 +237,4 @@ pub fn update_calendar_week_headings(
             }
         }
     }
-    // for (index, mut text) in texts.iter_mut().enumerate() {
-    //     let date = monday.checked_add_days(Days::new(index as u64)).unwrap_or(monday);
-    //     text.0 = date.format("%a %e").to_string();
-    // }
 }

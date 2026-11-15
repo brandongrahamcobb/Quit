@@ -30,7 +30,6 @@ use crate::system::product::activate::preview::view_product_preview;
 
 pub fn update_product_compound_buttons(
     mut commands: Commands,
-    page_state: Res<ProductPageState>,
     form_state: Res<ProductFormState>,
     list_container: Query<Entity, With<ProductCompoundListContainer>>,
     old_items: Query<Entity, With<ProductCompoundChoiceText>>,

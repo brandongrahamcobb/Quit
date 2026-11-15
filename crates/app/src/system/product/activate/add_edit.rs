@@ -27,7 +27,7 @@ use db::product::model::{NewProductModel, ProductCompoundInput, UpdateProductMod
 use db::product::setters::{insert_product_with_compounds, update_product_with_compounds};
 use crate::component::product::{ProductBrandText, ProductCompositionRemoveButton, ProductCompositionSearchText, ProductCompositionUnitButton, ProductCompoundToggleButton, ProductDescriptionText, ProductEditButton, ProductNameText, ProductRouteOptionButton, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitOptionButton};
 use crate::resource::custom_resource::Database;
-use crate::resource::product_resource::{ProductCompositionEntry, ProductEntry, ProductFormState, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
+use crate::resource::product_resource::{ProductCompositionEntry, ProductEntry, ProductFormState, ProductImageUploadReceiver, ProductOverlay, ProductPageState, ProductSaveReceiver};
 use std::sync::mpsc::channel;
 use std::thread;
 use tokio::runtime::Builder;
@@ -47,7 +47,7 @@ pub fn save_product(
     database: Res<Database>,
     mut page_state: ResMut<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
-    results: Res<ProductSaveResults>,
+    receiver: Res<ProductSaveReceiver>,
 ) {
     if form_state.saving {
         return;
@@ -128,7 +128,15 @@ pub fn save_product(
         serving_description: new_product.serving_description.clone(),
     };
     let pool = database.0.clone();
-    let sender = results.sender.clone();
+    let (sender, result_receiver) = channel();
+    if let Ok(mut slot) = receiver.0.lock() {
+        *slot = Some(result_receiver);
+    } else {
+        //form_state.saving = false;
+        form_state.error = Some("Could not initialize product saving.".to_string());
+        return;
+    }
+    //form_state.saving = true;
     form_state.error = None;
     thread::spawn(move || {
         let runtime = Builder::new_current_thread().enable_all().build().unwrap();

@@ -19,7 +19,7 @@
 
 use bevy::prelude::*;
 use crate::component::product::ProductFormOverlay;
-use crate::resource::product_resource::{ProductCompositionEntry, ProductCompositionLoadResults, ProductCompoundLoadResults, ProductDeleteResults, ProductDeletionState, ProductFormState, ProductImageUploadReceiver, ProductLoadReceiver, ProductOverlay, ProductPageState, ProductSaveResults};
+use crate::resource::product_resource::{ProductCompositionEntry, ProductCompositionLoadReceiver, ProductCompoundLoadReceiver, ProductDeleteReceiver, ProductDeletionState, ProductFormState, ProductImageUploadReceiver, ProductLoadReceiver, ProductOverlay, ProductPageState, ProductSaveReceiver};
 use std::sync::mpsc::TryRecvError;
 
 
@@ -95,21 +95,33 @@ pub fn poll_product_image_upload(
 }
 
 pub fn poll_product_delete_results(
-    results: ResMut<ProductDeleteResults>,
+    receiver: Res<ProductDeleteReceiver>,
     mut page_state: ResMut<ProductPageState>,
     mut deletion_state: ResMut<ProductDeletionState>,
 ) {
     let result = {
-        let receiver = results.0.lock().unwrap();
-        receiver.as_ref().and_then(|receiver| receiver.try_recv().ok())
+        let mut slot = receiver.0.lock().unwrap();
+        let Some(channel_receiver) = slot.as_ref() else {
+            return;
+        };
+        match channel_receiver.try_recv() {
+            Ok((id, result)) => {
+                *slot = None;
+                Some(result.map(|()| id))
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Image upload operation failed.".to_owned()))
+            }
+        }
     };
-    let Some((id, result)) = result else {
+    let Some(result) = result else {
         return;
     };
-    *results.0.lock().unwrap() = None;
     deletion_state.deleting = false;
     match result {
-        Ok(()) => {
+        Ok(id) => {
             page_state.products.retain(|product| product.id != id);
             if page_state.overlay == Some(ProductOverlay::Preview(id)) || page_state.overlay == Some(ProductOverlay::Delete(id)) {
                 page_state.overlay = None;
@@ -124,43 +136,72 @@ pub fn poll_product_delete_results(
 }
 
 pub fn poll_product_compound_load_results(
-    results: Res<ProductCompoundLoadResults>,
+    receiver: Res<ProductCompoundLoadReceiver>,
     mut form_state: ResMut<ProductFormState>,
 ) {
-    let Ok(receiver) = results.receiver.lock() else {
+    let result = {
+        let mut slot = receiver.0.lock().unwrap();
+        let Some(channel_receiver) = slot.as_ref() else {
+            return;
+        };
+        match channel_receiver.try_recv() {
+            Ok(result) => {
+                *slot = None;
+                Some(result)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Compound load operation failed.".to_owned()))
+            }
+        }
+    };
+    let Some(result) = result else {
         return;
     };
-    while let Ok(result) = receiver.try_recv() {
-        form_state.loading_compounds = false;
-        match result {
-            Ok(compounds) => {
-                form_state.compounds = compounds;
-                form_state.error = None;
-            }
-            Err(error) => {
-                form_state.error = Some(format!("Could not load available compounds: {error}"));
-            }
+    form_state.loading_compounds = false;
+    match result {
+        Ok(compounds) => {
+            form_state.compounds = compounds;
+            form_state.error = None;
+        }
+        Err(error) => {
+            form_state.error = Some(format!("Could not load available compounds: {error}"));
         }
     }
 }
 
 pub fn poll_product_composition_load_results(
-    results: ResMut<ProductCompositionLoadResults>,
+    receiver: Res<ProductCompositionLoadReceiver>,
     page_state: Res<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
 ) {
-    let Ok(receiver) = results.receiver.lock() else {
-        return;
+    let result = {
+        let mut slot = receiver.0.lock().unwrap();
+        let Some(channel_receiver) = slot.as_ref() else {
+            return;
+        };
+        match channel_receiver.try_recv() {
+            Ok((id, result)) => {
+                *slot = None;
+                Some(result.map(|compounds| (id, compounds)))
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Compound load operation failed.".to_owned()))
+            }
+        }
     };
-    let Ok((product_id, result)) = receiver.try_recv() else {
+    let Some(result) = result else {
         return;
     };
     form_state.loading_composition = false;
-    if page_state.overlay != Some(ProductOverlay::Form { editing_id: Some(product_id) }) {
-        return;
-    }
     match result {
-        Ok(compounds) => {
+        Ok((id, compounds)) => {
+            if page_state.overlay != Some(ProductOverlay::Form { editing_id: Some(id) }) {
+                return;
+            }
             let selected_compounds: Option<Vec<ProductCompositionEntry>> = compounds.into_iter().map(|compound| {
                 form_state.compounds.iter().find(|entry| entry.id == compound.compound_id).map(|entry| ProductCompositionEntry {
                     compound_id: compound.compound_id,
@@ -185,15 +226,29 @@ pub fn poll_product_composition_load_results(
 }
 
 pub fn poll_product_save_results(
+    receiver: Res<ProductSaveReceiver>,
     mut form_overlay: Query<&mut Node, With<ProductFormOverlay>>,
-    results: Res<ProductSaveResults>,
     mut page_state: ResMut<ProductPageState>,
     mut form_state: ResMut<ProductFormState>,
 ) {
-    let Ok(receiver) = results.receiver.lock() else {
-        return;
+    let result = {
+        let mut slot = receiver.0.lock().unwrap();
+        let Some(channel_receiver) = slot.as_ref() else {
+            return;
+        };
+        match channel_receiver.try_recv() {
+            Ok(result) => {
+                *slot = None;
+                Some(result)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                *slot = None;
+                Some(Err("Compound load operation failed.".to_owned()))
+            }
+        }
     };
-    let Ok(result) = receiver.try_recv() else {
+    let Some(result) = result else {
         return;
     };
     match result {

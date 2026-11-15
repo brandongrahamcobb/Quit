@@ -117,6 +117,7 @@ pub fn spawn_product_navigation(mut commands: Commands) {
             ProductListContainer,
         ));
         spawn_product_form(page);
+        spawn_preview_overlay(page);
         spawn_deletion_dialog(page);
    });
 }

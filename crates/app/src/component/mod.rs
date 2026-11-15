@@ -2,8 +2,6 @@ pub mod account;
 pub mod calendar;
 pub mod compound;
 pub mod dashboard;
-pub mod day;
-pub mod entry;
 pub mod login;
 pub mod onboarding;
 pub mod page;
