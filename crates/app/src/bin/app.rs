@@ -30,6 +30,7 @@ use quit::plugin::login_plugin::LoginPlugin;
 use quit::plugin::page_plugin::PagePlugin;
 use quit::plugin::scroll_plugin::ScrollPlugin;
 use quit::plugin::startup_plugin::StartupPlugin;
+use quit::plugin::input_plugin::TextInputPlugin;
 // use quit::plugin::onboarding_plugin::OnboardingPlugin;
 use quit::plugin::product_plugin::ProductPlugin;
 use quit::resource::custom_resource::{ClientMap, Database};
@@ -52,7 +53,8 @@ fn main() {
         CalendarPlugin,
         // CompoundPlugin,
         ProductPlugin,
-        ScrollPlugin
+        ScrollPlugin,
+        TextInputPlugin
     ));
     let db: DbPool = db::pool::new().expect("failed to create database pool");
     app.insert_resource(ClientMap(HashMap::new()));

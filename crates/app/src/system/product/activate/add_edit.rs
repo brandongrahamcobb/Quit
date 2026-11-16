@@ -306,8 +306,8 @@ pub fn add_product(
     form_state.name.clear();
     form_state.route.clear();
     form_state.selected_compounds.clear();
-    form_state.serving_size = "1".to_string();
-    form_state.serving_unit = "unit".to_string();
+    form_state.serving_size.clear();
+    form_state.serving_unit.clear();
     form_state.serving_description.clear();
     form_state.serving_unit_selector_open = false;
     fill_form(inputs, form_state);

@@ -20,6 +20,7 @@ use bevy::prelude::*;
 
 use crate::page::AppPage;
 use crate::resource::login_resource::{LoginFormState, LoginPageState, LoginReceiver};
+use crate::system::login::activate::sign_in::submit_login_on_enter;
 use crate::system::login::poll::{poll_login_fields, poll_login_results};
 
 pub struct LoginPlugin;
@@ -30,6 +31,6 @@ impl Plugin for LoginPlugin {
             .init_resource::<LoginPageState>()
             .init_resource::<LoginFormState>()
             .init_resource::<LoginReceiver>()
-            .add_systems(Update, (poll_login_fields, poll_login_results).run_if(in_state(AppPage::Login)));
+            .add_systems(Update, (poll_login_fields, poll_login_results, submit_login_on_enter).run_if(in_state(AppPage::Login)));
     }
 }

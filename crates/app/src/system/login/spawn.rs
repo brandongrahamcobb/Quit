@@ -21,6 +21,7 @@ use bevy::prelude::*;
 use bevy::text::{EditableText, TextCursorStyle};
 use bevy::ui_widgets::{Button, TextInput, observe};
 
+use crate::component::input::TextInputPlaceholder;
 use crate::component::login::{
     LoginPage, LoginStatusDisplay, LoginSubmit, PasswordField, UsernameField
 };
@@ -58,45 +59,55 @@ pub fn spawn_login_navigation(mut commands: Commands, asset_server: Res<AssetSer
     });
 }
 
-fn spawn_login_field<'a, T>(
+fn spawn_login_field<'a, T: Component>(
     parent: &'a mut ChildSpawnerCommands,
     label: &str,
     marker: T,
     color: Color,
-    tab_index: i8
-) -> EntityCommands<'a>
-where
-    T: Component,
-{
-    let mut entity = parent
-        .spawn((
+    tab_index: i8,
+) -> EntityCommands<'a> {
+    let mut wrap = parent.spawn((
+        Node {
+            width: percent(100),
+            height: px(52),
+            padding: UiRect::horizontal(px(14)),
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        BackgroundColor(color),
+    ));
+    wrap.with_children(|w| {
+        w.spawn((
             Node {
                 width: percent(100),
-                height: px(52),
-                padding: UiRect {
-                    left: px(14),
-                    right: px(14),
-                    top: px(16),
-                    bottom: px(16),
-                },
+                height: px(22),
                 ..default()
             },
             TextInput,
             EditableText::default(),
             TextLayout::new(Justify::Left, LineBreak::NoWrap),
             TextCursorStyle::default(),
-            BackgroundColor(color),
+            TextFont::from_font_size(16.0),
+            TextColor(Color::WHITE),
             TabIndex(tab_index as i32),
             marker,
+        ))
+        .with_child((
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(0),
+                top: px(0),
+                ..default()
+            },
+            Text::new(label),
+            TextFont::from_font_size(16.0),
+            TextColor(Color::srgb(0.5, 0.5, 0.5)),
+            TextInputPlaceholder,
         ));
-    entity.with_child((
-        Text::new(label),
-        TextFont::from_font_size(16.0),
-        TextColor(Color::WHITE),
-    ));
-    entity
+    });
+    wrap
 }
- 
+
 fn spawn_login_form(
     parent: &mut ChildSpawnerCommands,
 ) {
@@ -108,16 +119,6 @@ fn spawn_login_form(
                 ..default()
             },
             TextColor(Color::srgb(0.94, 0.96, 0.93)),
-        )
-    );
-    parent.spawn(
-        (
-            Text::new("Sign in."),
-            TextFont {
-                font_size: FontSize::Px(16.0),
-                ..default()
-            },
-            TextColor(Color::srgb(0.68, 0.74, 0.73)),
         )
     );
     spawn_login_field(parent, "Username", UsernameField, Color::srgb(0.07, 0.09, 0.10), 0);

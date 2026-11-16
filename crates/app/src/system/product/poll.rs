@@ -251,6 +251,7 @@ pub fn poll_product_save_results(
     let Some(result) = result else {
         return;
     };
+    form_state.saving = false;
     match result {
         Ok(products) => {
             page_state.products = products;

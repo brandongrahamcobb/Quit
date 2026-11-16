@@ -47,7 +47,7 @@ impl Plugin for ProductPlugin {
                 ).chain(),
             )
             .add_systems(
-                Update,
+                OnEnter(AppPage::Products),
                 (
                     begin_product_compound_load,
                     begin_product_composition_load,

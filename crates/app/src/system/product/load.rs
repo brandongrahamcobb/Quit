@@ -115,6 +115,7 @@ pub fn begin_product_compound_load(
             }),
             Err(error) => Err(error.to_string()),
         };
+        println!("Product compound load worker finished");
         let _ = sender.send(result);
     });
 }

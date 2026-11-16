@@ -39,6 +39,7 @@ pub fn handle_product_escape(
         }
         Some(ProductOverlay::Delete(_)) => {
             if deletion_state.deleting {
+                println!("deleting");
                 return;
             }
             page_state.overlay = None;
@@ -47,6 +48,10 @@ pub fn handle_product_escape(
         }
         Some(ProductOverlay::Form { .. }) => {
             if form_state.loading_compounds || form_state.loading_composition || form_state.saving {
+                println!("form");
+                println!("{}", form_state.loading_compounds.to_string());
+                println!("{}", form_state.loading_composition.to_string());
+                println!("{}", form_state.saving.to_string());
                 return;
             }
             page_state.overlay = None;

@@ -22,8 +22,10 @@ use bevy::input_focus::tab_navigation::{TabGroup, TabIndex};
 use bevy::prelude::*;
 use bevy::text::{EditableText, TextCursorStyle};
 use bevy::ui_widgets::{Button, TextInput};
+use crate::component::input::TextInputPlaceholder;
 use crate::component::page::PageRoot;
 use crate::component::product::{ProductAddButton, ProductBrandText, ProductCancelButton, ProductCompositionListContainer, ProductCompositionSearchText, ProductCompoundListContainer, ProductDashboardButton, ProductDeleteCancelButton, ProductDeleteConfirmButton, ProductDeleteDialog, ProductDeleteErrorText, ProductDeleteNameText, ProductDescriptionText, ProductErrorText, ProductFormOverlay, ProductFormRoot, ProductImagePreview, ProductImageRemoveButton, ProductImageUploadButton, ProductListContainer, ProductListText, ProductNameText, ProductNavigationRoot, ProductPreviewOverlay, ProductPreviewPanel, ProductRouteButton, ProductRouteOptionButton, ProductRouteOptionList, ProductRouteText, ProductSaveButton, ProductSaveButtonText, ProductSearchText, ProductServingDescriptionText, ProductServingSizeText, ProductServingUnitButton, ProductServingUnitOptionButton, ProductServingUnitOptionList, ProductServingUnitText};
+use crate::system::dashboard::open_dashboard;
 use crate::system::product::activate::add_edit::{add_product, cancel_save, remove_product_image, save_product, select_product_route, select_product_serving_unit, toggle_product_route_dropdown, toggle_product_serving_unit_dropdown, upload_product_image};
 use crate::system::product::activate::delete::{cancel_product_delete, confirm_product_delete};
 
@@ -59,7 +61,7 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                 BackgroundColor(Color::srgb(0.20, 0.24, 0.28)),
             )).with_children(|button| {
                 button.spawn(Text::new("Dashboard"));
-            });
+            }).observe(open_dashboard);
         });
         page.spawn(Node {
             width: percent(100),
@@ -83,7 +85,7 @@ pub fn spawn_product_navigation(mut commands: Commands) {
                 EditableText::default(),
                 TextLayout::no_wrap(),
                 TextCursorStyle::default(),
-                TextFont::from_font_size(FontSize::Px(15.0)),
+                TextFont::from_font_size(FontSize::Px(16.0)),
                 TextColor(Color::WHITE),
                 TabIndex(0),
                 ProductSearchText,
@@ -159,7 +161,6 @@ fn spawn_product_form(
                 Node {
                     width: percent(100),
                     min_height: px(40),
-                    padding: UiRect::all(px(8)),
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
                     column_gap: px(8),
@@ -167,16 +168,16 @@ fn spawn_product_form(
                 },
             )).with_children(|field| {
                 field.spawn((
-                    Text::new("Name:"),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
-                    TextColor(Color::WHITE),
-                ));
-                field.spawn((
                     Node {
                         flex_grow: 1.0,
                         min_width: px(0),
                         height: px(40),
-                        padding: UiRect::all(px(8)),
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
@@ -184,17 +185,21 @@ fn spawn_product_form(
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(0),
                     ProductNameText,
+                )).with_child((
+                    Text::new("Name"),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    TextInputPlaceholder
                 ));
             });
            form.spawn((
                 Node {
                     width: percent(100),
                     min_height: px(40),
-                    padding: UiRect::all(px(8)),
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
                     column_gap: px(8),
@@ -202,16 +207,16 @@ fn spawn_product_form(
                 },
             )).with_children(|field| {
                 field.spawn((
-                    Text::new("Brand:"),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
-                    TextColor(Color::WHITE),
-                ));
-                field.spawn((
                     Node {
                         flex_grow: 1.0,
                         height: px(40),
                         min_width: px(0),
-                        padding: UiRect::all(px(8)),
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
@@ -219,10 +224,15 @@ fn spawn_product_form(
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(1),
                     ProductBrandText,
+                )).with_child((
+                    Text::new("Brand"),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    TextInputPlaceholder
                 ));
             });
             form.spawn((
@@ -234,7 +244,6 @@ fn spawn_product_form(
                     ..default()
                 },
             )).with_children(|field| {
-                field.spawn((Text::new("ROA:"), TextFont::from_font_size(FontSize::Px(15.0))));
                 field.spawn((
                     Node {
                         width: percent(100),
@@ -247,14 +256,25 @@ fn spawn_product_form(
                         Node {
                             width: percent(100),
                             min_height: px(40),
-                            padding: UiRect::all(px(8)),
+                            padding: UiRect {
+                                left: px(12),
+                                right: px(12),
+                                top: px(12),
+                                bottom: px(12),
+                            },
                             ..default()
                         },
                         BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
                         TabIndex(2),
                         ProductRouteButton,
                     )).with_children(|button| {
-                        button.spawn((Text::new(""), TextFont::from_font_size(FontSize::Px(15.0)), ProductRouteText));
+                        button.spawn((
+                            Text::new("ROA"),
+                            TextFont::from_font_size(FontSize::Px(16.0)),
+                            TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                            ProductRouteText,
+                            TextInputPlaceholder
+                        ));
                     }).observe(toggle_product_route_dropdown);
                     dropdown.spawn((
                         Node {
@@ -295,7 +315,6 @@ fn spawn_product_form(
                 Node {
                     width: percent(100),
                     min_height: px(40),
-                    padding: UiRect::all(px(8)),
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
                     column_gap: px(8),
@@ -303,16 +322,16 @@ fn spawn_product_form(
                 },
             )).with_children(|field| {
                 field.spawn((
-                    Text::new("Serving Size:"),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
-                    TextColor(Color::WHITE),
-                ));
-                field.spawn((
                     Node {
                         flex_grow: 1.0,
                         height: px(40),
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         min_width: px(0),
-                        padding: UiRect::all(px(8)),
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
@@ -320,10 +339,15 @@ fn spawn_product_form(
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(3),
                     ProductServingSizeText,
+                )).with_child((
+                    Text::new("Serving Size"),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    TextInputPlaceholder
                 ));
             });
             form.spawn((
@@ -335,7 +359,6 @@ fn spawn_product_form(
                     ..default()
                 },
             )).with_children(|field| {
-                field.spawn((Text::new("Serving unit:"), TextFont::from_font_size(FontSize::Px(15.0))));
                 field.spawn((
                     Node {
                         width: percent(100),
@@ -348,14 +371,25 @@ fn spawn_product_form(
                         Node {
                             width: percent(100),
                             min_height: px(40),
-                            padding: UiRect::all(px(8)),
+                            padding: UiRect {
+                                left: px(12),
+                                right: px(12),
+                                top: px(12),
+                                bottom: px(12),
+                            },
                             ..default()
                         },
                         BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
                         TabIndex(4),
                         ProductServingUnitButton,
                     )).with_children(|button| {
-                        button.spawn((Text::new(""), TextFont::from_font_size(FontSize::Px(15.0)), ProductServingUnitText));
+                        button.spawn((
+                            Text::new("Serving Units"),
+                            TextFont::from_font_size(FontSize::Px(16.0)),
+                            TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                            ProductServingUnitText,
+                            TextInputPlaceholder
+                        ));
                     }).observe(toggle_product_serving_unit_dropdown);
                     dropdown.spawn((
                         Node {
@@ -380,7 +414,6 @@ fn spawn_product_form(
                                 Button,
                                 Node {
                                     width: percent(100),
-                                    padding: UiRect::all(px(8)),
                                     ..default()
                                 },
                                 BackgroundColor(Color::srgb(0.20, 0.22, 0.25)),
@@ -396,7 +429,6 @@ fn spawn_product_form(
                 Node {
                     width: percent(100),
                     min_height: px(40),
-                    padding: UiRect::all(px(8)),
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
                     column_gap: px(8),
@@ -404,16 +436,16 @@ fn spawn_product_form(
                 },
             )).with_children(|field| {
                 field.spawn((
-                    Text::new("Serving Description:"),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
-                    TextColor(Color::WHITE),
-                ));
-                field.spawn((
                     Node {
                         flex_grow: 1.0,
                         height: px(40),
                         min_width: px(0),
-                        padding: UiRect::all(px(8)),
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
@@ -421,17 +453,21 @@ fn spawn_product_form(
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(5),
                     ProductServingDescriptionText,
+                )).with_child((
+                    Text::new("Serving Description"),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    TextInputPlaceholder
                 ));
             });
             form.spawn((
                 Node {
                     width: percent(100),
                     min_height: px(40),
-                    padding: UiRect::all(px(8)),
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
                     column_gap: px(8),
@@ -439,16 +475,16 @@ fn spawn_product_form(
                 },
             )).with_children(|field| {
                 field.spawn((
-                    Text::new("Product Description:"),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
-                    TextColor(Color::WHITE),
-                ));
-                field.spawn((
                     Node {
                         flex_grow: 1.0,
                         height: px(40),
                         min_width: px(0),
-                        padding: UiRect::all(px(8)),
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
@@ -456,13 +492,18 @@ fn spawn_product_form(
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(6),
                     ProductDescriptionText,
+                )).with_child((
+                    Text::new("Product Description"),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    TextInputPlaceholder
                 ));
             });
-            form.spawn((Text::new("Composition:"), TextFont::from_font_size(FontSize::Px(15.0))));
+            form.spawn((Text::new("Composition:"), TextFont::from_font_size(FontSize::Px(16.0))));
             form.spawn(Node {
                 width: percent(100),
                 flex_shrink: 0.0,
@@ -470,13 +511,13 @@ fn spawn_product_form(
                 ..default()
             }).with_children(|wrap| {
                 wrap.spawn((
-                    Node { width: percent(100), height: px(42), padding: UiRect::all(px(8)), align_items: AlignItems::Center, ..default() },
+                    Node { width: percent(100), height: px(42), align_items: AlignItems::Center, ..default() },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
                     TextInput,
                     EditableText::default(),
                     TextLayout::no_wrap(),
                     TextCursorStyle::default(),
-                    TextFont::from_font_size(FontSize::Px(15.0)),
+                    TextFont::from_font_size(FontSize::Px(16.0)),
                     TextColor(Color::WHITE),
                     TabIndex(7),
                     ProductCompositionSearchText,
@@ -492,12 +533,18 @@ fn spawn_product_form(
                         row_gap: px(4),
                         overflow: Overflow::scroll_y(),
                         display: Display::None,
+                        padding: UiRect {
+                            left: px(12),
+                            right: px(12),
+                            top: px(12),
+                            bottom: px(12),
+                        },
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.16, 0.18, 0.21)),
-                    // GlobalZIndex(1),
                     OverrideClip,
                     ProductCompoundListContainer,
+                    TextInputPlaceholder
                 ));
             });
             form.spawn((
@@ -509,7 +556,7 @@ fn spawn_product_form(
                 },
                 ProductCompositionListContainer,
             ));
-            form.spawn((Text::new("Image:"), TextFont::from_font_size(FontSize::Px(15.0))));
+            form.spawn((Text::new("Image:"), TextFont::from_font_size(FontSize::Px(16.0))));
             form.spawn(
                 Node {
                     flex_direction: FlexDirection::Row,
@@ -523,7 +570,7 @@ fn spawn_product_form(
                     BackgroundColor(Color::srgb(0.16, 0.38, 0.28)),
                     ProductImageUploadButton,
                 )).with_children(|button| {
-                    button.spawn((Text::new("Upload"), TextFont::from_font_size(FontSize::Px(15.0))));
+                    button.spawn((Text::new("Upload"), TextFont::from_font_size(FontSize::Px(16.0))));
                 }).observe(upload_product_image);
                 row.spawn((
                     Button,
@@ -531,7 +578,7 @@ fn spawn_product_form(
                     BackgroundColor(Color::srgb(0.32, 0.20, 0.20)),
                     ProductImageRemoveButton,
                 )).with_children(|button| {
-                    button.spawn((Text::new("Remove"), TextFont::from_font_size(FontSize::Px(15.0))));
+                    button.spawn((Text::new("Remove"), TextFont::from_font_size(FontSize::Px(16.0))));
                 }).observe(remove_product_image);
             });
             form.spawn((
